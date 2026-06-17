@@ -1,0 +1,2 @@
+# EASTCSO
+EASTC Students Organization
