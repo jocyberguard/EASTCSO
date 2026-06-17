@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- ========================================
+         EASTC Students Organization Portal
+         A beginner-friendly Web Design project
+         using HTML, CSS, and JavaScript.
+    ========================================= -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EASTC Students Organization Portal - Your gateway to student life, events, and services at EASTC.">
+    <title>EASTC Students Organization Portal</title>
+    <!-- Link to external CSS stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Font Awesome for icons (CDN) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <!-- Google Font: Inter for clean, modern typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- ========================
+         HEADER SECTION
+    ========================= -->
+    <header id="site-header">
+        <div class="header-content">
+            <!-- Logo / Icon -->
+            <div class="logo">
+                <img src="img/logoo.png" alt="EASTC Logo">
+                <h1>EASTC Students Organization</h1>
+            </div>
+            <p class="tagline">Empowering Students, Building Leaders</p>
+        </div>
+    </header>
+    <!-- ========================
+         NAVIGATION MENU
+    ========================= -->
+    <nav id="main-nav">
+        <!-- Hamburger button for mobile -->
+        <button id="menu-toggle" class="menu-toggle" aria-label="Toggle navigation menu">
+            <i class="fas fa-bars"></i>
+        </button>
+        <ul id="nav-list" class="nav-list">
+            <li><a href="#home" class="nav-link active"><i class="fas fa-home"></i> Home</a></li>
+            <li><a href="#leaders" class="nav-link"><i class="fas fa-users"></i> Leaders</a></li>
+            <li><a href="#events" class="nav-link"><i class="fas fa-calendar-alt"></i> Events</a></li>
+            <li><a href="#announcements" class="nav-link"><i class="fas fa-bullhorn"></i> Announcements</a></li>
+            <li><a href="#services" class="nav-link"><i class="fas fa-concierge-bell"></i> Student Services</a></li>
+            <li><a href="#contact" class="nav-link"><i class="fas fa-envelope"></i> Contact</a></li>
+        </ul>
+    </nav>
+    <!-- ========================
+         MAIN GRID LAYOUT
+         Two columns on desktop:
+         - Main content (2fr)
+         - Sidebar (1fr)
+    ========================= -->
+    <div class="grid-container">
+        <!-- ========================
+             MAIN CONTENT AREA
+        ========================= -->
+        <main id="main-content">
+            <!-- ---- HOME SECTION ---- -->
+            <section id="home" class="content-section">
+                <h2 class="section-title">
+                    <i class="fas fa-home"></i> Welcome to EASTC Students Organization
+                </h2>
+                <div class="welcome-box">
+                    <p class="welcome-message">
+                        <i class="fas fa-star accent-icon"></i>
+                        Welcome to the official portal of the <strong>EASTC Students Organization</strong>!
+                        We are a vibrant community dedicated to enhancing student life, fostering
+                        academic excellence, and building tomorrow's leaders at the Eastern Africa
+                        Statistical Training Centre.
+                    </p>
+                </div>
+                <!-- Mission and Objectives -->
+                <h3 class="subsection-title">Our Mission &amp; Objectives</h3>
+                <ul class="mission-list">
+                    <li><i class="fas fa-check-circle"></i> Promote academic excellence among all students</li>
+                    <li><i class="fas fa-check-circle"></i> Foster unity and cooperation within the student community</li>
+                    <li><i class="fas fa-check-circle"></i> Organize social, cultural, and sporting activities</li>
+                    <li><i class="fas fa-check-circle"></i> Represent student interests to the college administration</li>
+                    <li><i class="fas fa-check-circle"></i> Provide platforms for leadership development</li>
+                    <li><i class="fas fa-check-circle"></i> Support students' welfare and personal growth</li>
+                </ul>
+            </section>
+            <!-- ---- LEADERS SECTION ---- -->
+            <section id="leaders" class="content-section">
+                <h2 class="section-title">
+                    <i class="fas fa-users"></i> Student Leaders
+                </h2>
+                <p>Meet the dedicated leaders who serve the EASTC student body:</p>
+                <!-- Leader Cards Container -->
+                <div class="leaders-grid">
+                    <!-- Leader Card 1 -->
+                    <div class="leader-card">
+                        <div class="leader-icon">
+                            <i class="fas fa-user-tie"></i>
+                        </div>
+                        <h3>John Student</h3>
+                        <p class="leader-role">President</p>
+                        <p class="leader-desc">Leading the organization with vision and dedication to serve all students.</p>
+                    </div>
+                    <!-- Leader Card 2 -->
+                    <div class="leader-card">
+                        <div class="leader-icon">
+                            <i class="fas fa-user-graduate"></i>
+                        </div>
+                        <h3>Amina Hassan</h3>
+                        <p class="leader-role">Vice President</p>
+                        <p class="leader-desc">Supporting organizational initiatives and driving student engagement.</p>
+                    </div>
+                    <!-- Leader Card 3 -->
+                    <div class="leader-card">
+                        <div class="leader-icon">
+                            <i class="fas fa-user-edit"></i>
+                        </div>
+                        <h3>Peter Joseph</h3>
+                        <p class="leader-role">Secretary</p>
+                        <p class="leader-desc">Managing communication and keeping accurate organizational records.</p>
+                    </div>
+                    <!-- Leader Card 4 -->
+                    <div class="leader-card">
+                        <div class="leader-icon">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <h3>Grace Mwamba</h3>
+                        <p class="leader-role">Treasurer</p>
+                        <p class="leader-desc">Overseeing financial planning and transparent budget management.</p>
+                    </div>
+                </div>
+            </section>
+            <!-- ---- EVENTS SECTION ---- -->
+            <section id="events" class="content-section">
+                <h2 class="section-title">
+                    <i class="fas fa-calendar-alt"></i> Upcoming Events
+                </h2>
+                <p>Stay updated with our upcoming events and activities:</p>
+                <!-- Events Table -->
+                <div class="table-wrapper">
+                    <table id="events-table">
+                        <thead>
+                            <tr>
+                                <th><i class="fas fa-tag"></i> Event Name</th>
+                                <th><i class="fas fa-calendar"></i> Date</th>
+                                <th><i class="fas fa-map-marker-alt"></i> Venue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Freshers' Welcome Party</td>
+                                <td>January 20, 2026</td>
+                                <td>EASTC Main Hall</td>
+                            </tr>
+                            <tr>
+                                <td>Inter-College Sports Day</td>
+                                <td>February 14, 2026</td>
+                                <td>EASTC Sports Ground</td>
+                            </tr>
+                            <tr>
+                                <td>Academic Workshop: Data Science</td>
+                                <td>March 5, 2026</td>
+                                <td>Computer Lab 2</td>
+                            </tr>
+                            <tr>
+                                <td>Cultural Night</td>
+                                <td>April 10, 2026</td>
+                                <td>EASTC Auditorium</td>
+                            </tr>
+                            <tr>
+                                <td>Leadership Seminar</td>
+                                <td>May 22, 2026</td>
+                                <td>Conference Room A</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            <!-- ---- ANNOUNCEMENTS SECTION ---- -->
+            <section id="announcements" class="content-section">
+                <h2 class="section-title">
+                    <i class="fas fa-bullhorn"></i> Announcements
+                </h2>
+                <p>Important announcements for all EASTC students:</p>
+                <!-- Ordered list of announcements -->
+                <ol class="announcements-list">
+                    <li>
+                        <strong>Registration Deadline:</strong> All students must complete course
+                        registration by January 15, 2026.
+                    </li>
+                    <li>
+                        <strong>Library Hours Extended:</strong> The library will now remain open
+                        until 10:00 PM on weekdays during exam period.
+                    </li>
+                    <li>
+                        <strong>Student ID Replacement:</strong> Students who lost their IDs
+                        should visit the administration office for replacement.
+                    </li>
+                    <li>
+                        <strong>Scholarship Opportunities:</strong> New scholarship applications
+                        for the 2026/2027 academic year are now open.
+                    </li>
+                    <li>
+                        <strong>Health Check-Up:</strong> Free health screening will be available
+                        at the campus clinic from January 25-30, 2026.
+                    </li>
+                </ol>
+            </section>
+            <!-- ---- STUDENT SERVICES SECTION ---- -->
+            <section id="services" class="content-section">
+                <h2 class="section-title">
+                    <i class="fas fa-concierge-bell"></i> Student Services
+                </h2>
+                <p>We offer the following services to support your journey at EASTC:</p>
+                <!-- Student Services List -->
+                <ul class="services-list">
+                    <li>
+                        <i class="fas fa-book-reader service-icon"></i>
+                        <div>
+                            <strong>Academic Support</strong>
+                            <p>Tutoring sessions, study groups, and academic advising to help you excel.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="fas fa-briefcase service-icon"></i>
+                        <div>
+                            <strong>Career Guidance</strong>
+                            <p>Resume workshops, interview prep, and career counseling services.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="fas fa-futbol service-icon"></i>
+                        <div>
+                            <strong>Sports Activities</strong>
+                            <p>Football, basketball, volleyball, and other competitive sports programs.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="fas fa-hand-holding-heart service-icon"></i>
+                        <div>
+                            <strong>Student Welfare</strong>
+                            <p>Counseling, financial aid guidance, and student well-being programs.</p>
+                        </div>
+                    </li>
+                </ul>
+            </section>
+            <!-- ---- CONTACT SECTION ---- -->
+            <section id="contact" class="content-section">
+                <h2 class="section-title">
+                    <i class="fas fa-envelope"></i> Contact Us
+                </h2>
+                <p>Have questions or feedback? Reach out to us using the form below:</p>
+                <!-- Contact Form -->
+                <form id="contact-form" class="contact-form">
+                    <div class="form-group">
+                        <label for="fullname"><i class="fas fa-user"></i> Full Name</label>
+                        <input type="text" id="fullname" name="fullname" placeholder="Enter your full name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email"><i class="fas fa-at"></i> Email Address</label>
+                        <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="message"><i class="fas fa-comment-dots"></i> Message</label>
+                        <textarea id="message" name="message" rows="5" placeholder="Type your message here..." required></textarea>
+                    </div>
+                    <button type="submit" id="submit-btn" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i> Send Message
+                    </button>
+                </form>
+            </section>
+            <!-- ---- CRUD: STUDENT ACTIVITIES MANAGER ---- -->
+            <section id="activities" class="content-section">
+                <h2 class="section-title">
+                    <i class="fas fa-tasks"></i> Student Activities Manager
+                </h2>
+                <p>Use this tool to manage student activities (Add, View, Edit, Delete):</p>
+                <!-- Activity Input Form -->
+                <div class="activity-form">
+                    <div class="form-group">
+                        <label for="activity-name"><i class="fas fa-pen"></i> Activity Name</label>
+                        <input type="text" id="activity-name" placeholder="e.g. Debate Competition">
+                    </div>
+                    <div class="form-group">
+                        <label for="activity-date"><i class="fas fa-calendar-day"></i> Date</label>
+                        <input type="date" id="activity-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="activity-desc"><i class="fas fa-align-left"></i> Description</label>
+                        <input type="text" id="activity-desc" placeholder="Brief description of the activity">
+                    </div>
+                    <!-- Add / Update Buttons -->
+                    <div class="activity-buttons">
+                        <button id="add-activity-btn" class="btn btn-primary" onclick="addActivity()">
+                            <i class="fas fa-plus-circle"></i> Add Activity
+                        </button>
+                        <button id="update-activity-btn" class="btn btn-secondary" onclick="updateActivity()" style="display: none;">
+                            <i class="fas fa-save"></i> Update Activity
+                        </button>
+                        <button id="cancel-edit-btn" class="btn btn-cancel" onclick="cancelEdit()" style="display: none;">
+                            <i class="fas fa-times-circle"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+                <!-- Activities List Display -->
+                <div id="activities-list" class="activities-list">
+                    <!-- Activities will be rendered here by JavaScript -->
+                    <p class="empty-message" id="empty-msg">
+                        <i class="fas fa-info-circle"></i> No activities added yet. Use the form above to add one!
+                    </p>
+                </div>
+            </section>
+        </main>
+        <!-- ========================
+             SIDEBAR
+        ========================= -->
+        <aside id="sidebar">
+            <!-- Quick Links Widget -->
+            <div class="sidebar-widget">
+                <h3><i class="fas fa-link"></i> Quick Links</h3>
+                <ul class="quick-links">
+                    <li><a href="#home"><i class="fas fa-chevron-right"></i> Home</a></li>
+                    <li><a href="#leaders"><i class="fas fa-chevron-right"></i> Our Leaders</a></li>
+                    <li><a href="#events"><i class="fas fa-chevron-right"></i> Events Calendar</a></li>
+                    <li><a href="#activities"><i class="fas fa-chevron-right"></i> Activities Manager</a></li>
+                    <li><a href="#contact"><i class="fas fa-chevron-right"></i> Get in Touch</a></li>
+                </ul>
+            </div>
+            <!-- Student Stats Widget -->
+            <div class="sidebar-widget">
+                <h3><i class="fas fa-chart-bar"></i> Student Stats</h3>
+                <ul class="stats-list">
+                    <li><i class="fas fa-users"></i> <strong>1,200+</strong> Active Students</li>
+                    <li><i class="fas fa-calendar-check"></i> <strong>25+</strong> Events per Year</li>
+                    <li><i class="fas fa-trophy"></i> <strong>10+</strong> Clubs &amp; Societies</li>
+                    <li><i class="fas fa-handshake"></i> <strong>5</strong> Partner Institutions</li>
+                </ul>
+            </div>
+            <!-- Important Dates Widget -->
+            <div class="sidebar-widget">
+                <h3><i class="fas fa-clock"></i> Important Dates</h3>
+                <ul class="dates-list">
+                    <li>
+                        <strong>Jan 15</strong>
+                        <span>Registration Closes</span>
+                    </li>
+                    <li>
+                        <strong>Jan 20</strong>
+                        <span>Semester Begins</span>
+                    </li>
+                    <li>
+                        <strong>Mar 15</strong>
+                        <span>Mid-Semester Exams</span>
+                    </li>
+                    <li>
+                        <strong>Jun 10</strong>
+                        <span>Final Exams Start</span>
+                    </li>
+                </ul>
+            </div>
+            <!-- Contact Info Widget -->
+            <div class="sidebar-widget">
+                <h3><i class="fas fa-phone-alt"></i> Contact Info</h3>
+                <ul class="contact-info">
+                    <li><i class="fas fa-map-marker-alt"></i> EASTC Campus, Dar es Salaam</li>
+                    <li><i class="fas fa-phone"></i> +255 123 456 789</li>
+                    <li><i class="fas fa-envelope"></i> students@eastc.ac.tz</li>
+                </ul>
+            </div>
+        </aside>
+    </div> <!-- end .grid-container -->
+    <!-- ========================
+         FOOTER
+    ========================= -->
+    <footer id="site-footer">
+        <div class="footer-content">
+            <p>&copy; 2026 EASTC Students Organization. All rights reserved.</p>
+            <p class="footer-links">
+                <a href="#home">Home</a> |
+                <a href="#leaders">Leaders</a> |
+                <a href="#events">Events</a> |
+                <a href="#contact">Contact</a>
+            </p>
+            <p class="footer-tagline">
+                <i class="fas fa-heart"></i> Made with dedication for EASTC Students
+            </p>
+        </div>
+    </footer>
+    <!-- Link to external JavaScript file -->
+    <script src="script.js"></script>
+</body>
+</html>
