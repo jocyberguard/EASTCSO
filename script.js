@@ -342,3 +342,323 @@ function loadSampleData() {
 }
 // Load sample data when the page loads
 loadSampleData();
+
+// ============================================================
+// ADMIN PANEL
+// Simple JS-only admin system. Credentials are checked
+// client-side (suitable for a demo / beginner project).
+// Default: username = "admin", password = "eastc2026"
+// ============================================================
+
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = 'eastc2026';
+
+// Track admin login state
+let adminLoggedIn = false;
+
+// ---- Admin data stores (mirrors the live page data) ----
+let adminEvents = [
+    { name: "Freshers' Welcome Party",          date: 'January 20, 2026',   venue: 'EASTC Main Hall'     },
+    { name: 'Inter-College Sports Day',          date: 'February 14, 2026',  venue: 'EASTC Sports Ground' },
+    { name: 'Academic Workshop: Data Science',   date: 'March 5, 2026',      venue: 'Computer Lab 2'      },
+    { name: 'Cultural Night',                    date: 'April 10, 2026',     venue: 'EASTC Auditorium'    },
+    { name: 'Leadership Seminar',                date: 'May 22, 2026',       venue: 'Conference Room A'   }
+];
+
+let adminAnnouncements = [
+    { title: 'Registration Deadline',   body: 'All students must complete course registration by January 15, 2026.' },
+    { title: 'Library Hours Extended',  body: 'The library will now remain open until 10:00 PM on weekdays during exam period.' },
+    { title: 'Student ID Replacement',  body: 'Students who lost their IDs should visit the administration office for replacement.' },
+    { title: 'Scholarship Opportunities', body: 'New scholarship applications for the 2026/2027 academic year are now open.' },
+    { title: 'Health Check-Up',         body: 'Free health screening will be available at the campus clinic from January 25-30, 2026.' }
+];
+
+let adminLeaders = [
+    { name: 'John Student',  role: 'President',      desc: 'Leading the organization with vision and dedication to serve all students.',       icon: 'fa-user-tie'     },
+    { name: 'Amina Hassan',  role: 'Vice President',  desc: 'Supporting organizational initiatives and driving student engagement.',           icon: 'fa-user-graduate' },
+    { name: 'Peter Joseph',  role: 'Secretary',       desc: 'Managing communication and keeping accurate organizational records.',             icon: 'fa-user-edit'    },
+    { name: 'Grace Mwamba',  role: 'Treasurer',       desc: 'Overseeing financial planning and transparent budget management.',               icon: 'fa-user-shield'  }
+];
+
+// ========================
+// LOGIN / LOGOUT
+// ========================
+function openAdminLogin() {
+    if (adminLoggedIn) {
+        openAdminPanel();
+        return;
+    }
+    document.getElementById('admin-login-modal').style.display = 'flex';
+    document.getElementById('admin-login-error').style.display = 'none';
+    document.getElementById('admin-username').value = '';
+    document.getElementById('admin-password').value = '';
+    setTimeout(function() { document.getElementById('admin-username').focus(); }, 100);
+}
+
+function closeAdminLogin() {
+    document.getElementById('admin-login-modal').style.display = 'none';
+}
+
+function doAdminLogin() {
+    var user = document.getElementById('admin-username').value.trim();
+    var pass = document.getElementById('admin-password').value;
+    if (user === ADMIN_USER && pass === ADMIN_PASS) {
+        adminLoggedIn = true;
+        closeAdminLogin();
+        openAdminPanel();
+        // Update the nav button to show unlocked icon
+        var btn = document.getElementById('admin-nav-btn');
+        if (btn) { btn.innerHTML = '<i class="fas fa-unlock"></i> Admin'; }
+    } else {
+        document.getElementById('admin-login-error').style.display = 'block';
+    }
+}
+
+// Allow Enter key to submit login
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.getElementById('admin-login-modal').style.display === 'flex') {
+        doAdminLogin();
+    }
+});
+
+function adminLogout() {
+    adminLoggedIn = false;
+    closeAdminPanel();
+    var btn = document.getElementById('admin-nav-btn');
+    if (btn) { btn.innerHTML = '<i class="fas fa-lock"></i> Admin'; }
+    showToast('Logged out of admin panel.', 'success');
+}
+
+// ========================
+// OPEN / CLOSE PANEL
+// ========================
+function openAdminPanel() {
+    document.getElementById('admin-panel-modal').style.display = 'flex';
+    // Load site info fields
+    document.getElementById('adm-site-title').value   = document.querySelector('.logo h1').textContent;
+    document.getElementById('adm-site-tagline').value = document.querySelector('.tagline').textContent;
+    document.getElementById('adm-site-welcome').value = document.querySelector('.welcome-message').innerText.replace(/^\s+|\s+$/g, '');
+    var logoImg = document.querySelector('.logo img');
+    document.getElementById('adm-site-logo').value = logoImg ? logoImg.getAttribute('src') : '';
+    // Render all lists
+    renderAdminActivities();
+    renderAdminEvents();
+    renderAdminAnnouncements();
+    renderAdminLeaders();
+}
+
+function closeAdminPanel() {
+    document.getElementById('admin-panel-modal').style.display = 'none';
+}
+
+// ========================
+// TAB SWITCHING
+// ========================
+function switchAdminTab(tabId, btn) {
+    // Hide all tab contents
+    document.querySelectorAll('.admin-tab-content').forEach(function(t) { t.classList.remove('active'); });
+    // Deactivate all tab buttons
+    document.querySelectorAll('.admin-tab').forEach(function(b) { b.classList.remove('active'); });
+    // Show selected tab
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.add('active');
+}
+
+// ========================
+// ACTIVITIES TAB (re-uses the main activities array)
+// ========================
+function renderAdminActivities() {
+    var list = document.getElementById('adm-activities-list');
+    if (activities.length === 0) {
+        list.innerHTML = '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No activities yet.</p>';
+        return;
+    }
+    list.innerHTML = activities.map(function(a, i) {
+        return '<div class="admin-list-item">' +
+            '<div class="admin-item-info"><strong>' + a.name + '</strong><span>' + formatDate(a.date) + ' &mdash; ' + a.description + '</span></div>' +
+            '<div class="admin-item-actions">' +
+            '<button class="btn btn-sm btn-delete" onclick="adminDeleteActivity(' + i + ')"><i class="fas fa-trash-alt"></i></button>' +
+            '</div></div>';
+    }).join('');
+}
+
+function adminAddActivity() {
+    var name = document.getElementById('adm-act-name').value.trim();
+    var date = document.getElementById('adm-act-date').value;
+    var desc = document.getElementById('adm-act-desc').value.trim();
+    if (!name || !date || !desc) { showToast('Fill all activity fields.', 'error'); return; }
+    activities.push({ name: name, date: date, description: desc });
+    renderActivities();          // update main page
+    renderAdminActivities();     // update admin list
+    document.getElementById('adm-act-name').value = '';
+    document.getElementById('adm-act-date').value = '';
+    document.getElementById('adm-act-desc').value = '';
+    showToast('Activity added!', 'success');
+}
+
+function adminDeleteActivity(i) {
+    if (!confirm('Delete "' + activities[i].name + '"?')) return;
+    activities.splice(i, 1);
+    renderActivities();
+    renderAdminActivities();
+    showToast('Activity deleted.', 'success');
+}
+
+// ========================
+// EVENTS TAB
+// ========================
+function renderAdminEvents() {
+    var list = document.getElementById('adm-events-list');
+    list.innerHTML = adminEvents.map(function(e, i) {
+        return '<div class="admin-list-item">' +
+            '<div class="admin-item-info"><strong>' + e.name + '</strong><span>' + e.date + ' &mdash; ' + e.venue + '</span></div>' +
+            '<div class="admin-item-actions">' +
+            '<button class="btn btn-sm btn-delete" onclick="adminDeleteEvent(' + i + ')"><i class="fas fa-trash-alt"></i></button>' +
+            '</div></div>';
+    }).join('') || '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No events.</p>';
+}
+
+function adminAddEvent() {
+    var name  = document.getElementById('adm-evt-name').value.trim();
+    var date  = document.getElementById('adm-evt-date').value.trim();
+    var venue = document.getElementById('adm-evt-venue').value.trim();
+    if (!name || !date || !venue) { showToast('Fill all event fields.', 'error'); return; }
+    adminEvents.push({ name: name, date: date, venue: venue });
+    renderAdminEvents();
+    syncEventsTable();
+    document.getElementById('adm-evt-name').value  = '';
+    document.getElementById('adm-evt-date').value  = '';
+    document.getElementById('adm-evt-venue').value = '';
+    showToast('Event added!', 'success');
+}
+
+function adminDeleteEvent(i) {
+    if (!confirm('Delete "' + adminEvents[i].name + '"?')) return;
+    adminEvents.splice(i, 1);
+    renderAdminEvents();
+    syncEventsTable();
+    showToast('Event deleted.', 'success');
+}
+
+function syncEventsTable() {
+    var tbody = document.querySelector('#events-table tbody');
+    if (!tbody) return;
+    tbody.innerHTML = adminEvents.map(function(e) {
+        return '<tr><td>' + e.name + '</td><td>' + e.date + '</td><td>' + e.venue + '</td></tr>';
+    }).join('');
+}
+
+// ========================
+// ANNOUNCEMENTS TAB
+// ========================
+function renderAdminAnnouncements() {
+    var list = document.getElementById('adm-announcements-list');
+    list.innerHTML = adminAnnouncements.map(function(a, i) {
+        return '<div class="admin-list-item">' +
+            '<div class="admin-item-info"><strong>' + a.title + '</strong><span>' + a.body + '</span></div>' +
+            '<div class="admin-item-actions">' +
+            '<button class="btn btn-sm btn-delete" onclick="adminDeleteAnnouncement(' + i + ')"><i class="fas fa-trash-alt"></i></button>' +
+            '</div></div>';
+    }).join('') || '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No announcements.</p>';
+}
+
+function adminAddAnnouncement() {
+    var title = document.getElementById('adm-ann-title').value.trim();
+    var body  = document.getElementById('adm-ann-body').value.trim();
+    if (!title || !body) { showToast('Fill both announcement fields.', 'error'); return; }
+    adminAnnouncements.push({ title: title, body: body });
+    renderAdminAnnouncements();
+    syncAnnouncementsList();
+    document.getElementById('adm-ann-title').value = '';
+    document.getElementById('adm-ann-body').value  = '';
+    showToast('Announcement added!', 'success');
+}
+
+function adminDeleteAnnouncement(i) {
+    if (!confirm('Delete announcement "' + adminAnnouncements[i].title + '"?')) return;
+    adminAnnouncements.splice(i, 1);
+    renderAdminAnnouncements();
+    syncAnnouncementsList();
+    showToast('Announcement deleted.', 'success');
+}
+
+function syncAnnouncementsList() {
+    var ol = document.querySelector('.announcements-list');
+    if (!ol) return;
+    ol.innerHTML = adminAnnouncements.map(function(a) {
+        return '<li><strong>' + a.title + ':</strong> ' + a.body + '</li>';
+    }).join('');
+}
+
+// ========================
+// LEADERS TAB
+// ========================
+function renderAdminLeaders() {
+    var list = document.getElementById('adm-leaders-list');
+    list.innerHTML = adminLeaders.map(function(l, i) {
+        return '<div class="admin-list-item">' +
+            '<div class="admin-item-info"><strong>' + l.name + ' &mdash; ' + l.role + '</strong><span>' + l.desc + '</span></div>' +
+            '<div class="admin-item-actions">' +
+            '<button class="btn btn-sm btn-delete" onclick="adminDeleteLeader(' + i + ')"><i class="fas fa-trash-alt"></i></button>' +
+            '</div></div>';
+    }).join('') || '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No leaders.</p>';
+}
+
+function adminAddLeader() {
+    var name = document.getElementById('adm-ldr-name').value.trim();
+    var role = document.getElementById('adm-ldr-role').value.trim();
+    var desc = document.getElementById('adm-ldr-desc').value.trim();
+    var icon = document.getElementById('adm-ldr-icon').value.trim() || 'fa-user';
+    if (!name || !role || !desc) { showToast('Fill name, role, and description.', 'error'); return; }
+    adminLeaders.push({ name: name, role: role, desc: desc, icon: icon });
+    renderAdminLeaders();
+    syncLeadersGrid();
+    document.getElementById('adm-ldr-name').value = '';
+    document.getElementById('adm-ldr-role').value = '';
+    document.getElementById('adm-ldr-desc').value = '';
+    document.getElementById('adm-ldr-icon').value = '';
+    showToast('Leader added!', 'success');
+}
+
+function adminDeleteLeader(i) {
+    if (!confirm('Remove "' + adminLeaders[i].name + '" from leaders?')) return;
+    adminLeaders.splice(i, 1);
+    renderAdminLeaders();
+    syncLeadersGrid();
+    showToast('Leader removed.', 'success');
+}
+
+function syncLeadersGrid() {
+    var grid = document.querySelector('.leaders-grid');
+    if (!grid) return;
+    grid.innerHTML = adminLeaders.map(function(l) {
+        return '<div class="leader-card">' +
+            '<div class="leader-icon"><i class="fas ' + l.icon + '"></i></div>' +
+            '<h3>' + l.name + '</h3>' +
+            '<p class="leader-role">' + l.role + '</p>' +
+            '<p class="leader-desc">' + l.desc + '</p>' +
+            '</div>';
+    }).join('');
+}
+
+// ========================
+// SITE INFO TAB
+// ========================
+function adminSaveSiteInfo() {
+    var title    = document.getElementById('adm-site-title').value.trim();
+    var tagline  = document.getElementById('adm-site-tagline').value.trim();
+    var welcome  = document.getElementById('adm-site-welcome').value.trim();
+    var logoSrc  = document.getElementById('adm-site-logo').value.trim();
+
+    if (title)   { document.querySelector('.logo h1').textContent = title; document.title = title + ' Portal'; }
+    if (tagline) { document.querySelector('.tagline').textContent = tagline; }
+    if (welcome) {
+        var wm = document.querySelector('.welcome-message');
+        if (wm) { wm.innerHTML = '<i class="fas fa-star accent-icon"></i> ' + welcome; }
+    }
+    if (logoSrc) {
+        var logoImg = document.querySelector('.logo img');
+        if (logoImg) { logoImg.setAttribute('src', logoSrc); }
+    }
+    showToast('Site info updated!', 'success');
+}

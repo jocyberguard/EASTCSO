@@ -48,8 +48,135 @@
             <li><a href="#announcements" class="nav-link"><i class="fas fa-bullhorn"></i> Announcements</a></li>
             <li><a href="#services" class="nav-link"><i class="fas fa-concierge-bell"></i> Student Services</a></li>
             <li><a href="#contact" class="nav-link"><i class="fas fa-envelope"></i> Contact</a></li>
+            <li><a href="#" class="nav-link nav-link-admin" id="admin-nav-btn" onclick="openAdminLogin(); return false;"><i class="fas fa-lock"></i> Admin</a></li>
         </ul>
     </nav>
+
+    <!-- ========================
+         ADMIN LOGIN MODAL
+    ========================= -->
+    <div id="admin-login-modal" class="admin-modal-overlay" style="display:none;">
+        <div class="admin-modal-box">
+            <button class="admin-modal-close" onclick="closeAdminLogin()"><i class="fas fa-times"></i></button>
+            <div class="admin-modal-header">
+                <i class="fas fa-shield-alt"></i>
+                <h2>Admin Login</h2>
+                <p>Enter your credentials to access the admin panel</p>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-user"></i> Username</label>
+                <input type="text" id="admin-username" placeholder="Enter username" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-key"></i> Password</label>
+                <input type="password" id="admin-password" placeholder="Enter password">
+            </div>
+            <p id="admin-login-error" class="admin-error" style="display:none;"><i class="fas fa-exclamation-circle"></i> Invalid credentials. Try again.</p>
+            <button class="btn btn-primary" style="width:100%;" onclick="doAdminLogin()">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================
+         ADMIN PANEL MODAL
+    ========================= -->
+    <div id="admin-panel-modal" class="admin-modal-overlay" style="display:none;">
+        <div class="admin-panel-box">
+            <!-- Panel Header -->
+            <div class="admin-panel-header">
+                <div class="admin-panel-title">
+                    <i class="fas fa-cogs"></i>
+                    <span>Admin Panel</span>
+                </div>
+                <button class="admin-modal-close" onclick="closeAdminPanel()"><i class="fas fa-times"></i></button>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div class="admin-tabs">
+                <button class="admin-tab active" onclick="switchAdminTab('tab-activities', this)"><i class="fas fa-tasks"></i> Activities</button>
+                <button class="admin-tab" onclick="switchAdminTab('tab-events', this)"><i class="fas fa-calendar-alt"></i> Events</button>
+                <button class="admin-tab" onclick="switchAdminTab('tab-announcements', this)"><i class="fas fa-bullhorn"></i> Announcements</button>
+                <button class="admin-tab" onclick="switchAdminTab('tab-leaders', this)"><i class="fas fa-users"></i> Leaders</button>
+                <button class="admin-tab" onclick="switchAdminTab('tab-siteinfo', this)"><i class="fas fa-info-circle"></i> Site Info</button>
+            </div>
+
+            <!-- Tab: Activities -->
+            <div id="tab-activities" class="admin-tab-content active">
+                <h3 class="admin-section-heading"><i class="fas fa-tasks"></i> Manage Activities</h3>
+                <div class="admin-form-row">
+                    <input type="text" id="adm-act-name" placeholder="Activity name">
+                    <input type="date" id="adm-act-date">
+                    <input type="text" id="adm-act-desc" placeholder="Description">
+                    <button class="btn btn-primary btn-sm" onclick="adminAddActivity()"><i class="fas fa-plus"></i> Add</button>
+                </div>
+                <div id="adm-activities-list" class="admin-list"></div>
+            </div>
+
+            <!-- Tab: Events -->
+            <div id="tab-events" class="admin-tab-content">
+                <h3 class="admin-section-heading"><i class="fas fa-calendar-alt"></i> Manage Events</h3>
+                <div class="admin-form-row">
+                    <input type="text" id="adm-evt-name" placeholder="Event name">
+                    <input type="text" id="adm-evt-date" placeholder="e.g. January 20, 2026">
+                    <input type="text" id="adm-evt-venue" placeholder="Venue">
+                    <button class="btn btn-primary btn-sm" onclick="adminAddEvent()"><i class="fas fa-plus"></i> Add</button>
+                </div>
+                <div id="adm-events-list" class="admin-list"></div>
+            </div>
+
+            <!-- Tab: Announcements -->
+            <div id="tab-announcements" class="admin-tab-content">
+                <h3 class="admin-section-heading"><i class="fas fa-bullhorn"></i> Manage Announcements</h3>
+                <div class="admin-form-row">
+                    <input type="text" id="adm-ann-title" placeholder="Title (bold part)">
+                    <input type="text" id="adm-ann-body" placeholder="Announcement body text">
+                    <button class="btn btn-primary btn-sm" onclick="adminAddAnnouncement()"><i class="fas fa-plus"></i> Add</button>
+                </div>
+                <div id="adm-announcements-list" class="admin-list"></div>
+            </div>
+
+            <!-- Tab: Leaders -->
+            <div id="tab-leaders" class="admin-tab-content">
+                <h3 class="admin-section-heading"><i class="fas fa-users"></i> Manage Leaders</h3>
+                <div class="admin-form-row">
+                    <input type="text" id="adm-ldr-name" placeholder="Full name">
+                    <input type="text" id="adm-ldr-role" placeholder="Role (e.g. President)">
+                    <input type="text" id="adm-ldr-desc" placeholder="Short description">
+                    <input type="text" id="adm-ldr-icon" placeholder="FA icon class (e.g. fa-user-tie)">
+                    <button class="btn btn-primary btn-sm" onclick="adminAddLeader()"><i class="fas fa-plus"></i> Add</button>
+                </div>
+                <div id="adm-leaders-list" class="admin-list"></div>
+            </div>
+
+            <!-- Tab: Site Info -->
+            <div id="tab-siteinfo" class="admin-tab-content">
+                <h3 class="admin-section-heading"><i class="fas fa-info-circle"></i> Edit Site Info</h3>
+                <div class="form-group">
+                    <label><i class="fas fa-heading"></i> Site Title</label>
+                    <input type="text" id="adm-site-title" placeholder="e.g. EASTC Students Organization">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-quote-left"></i> Tagline</label>
+                    <input type="text" id="adm-site-tagline" placeholder="e.g. Empowering Students, Building Leaders">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-align-left"></i> Welcome Message</label>
+                    <textarea id="adm-site-welcome" rows="4" placeholder="Welcome message text..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-image"></i> Logo Image URL or path</label>
+                    <input type="text" id="adm-site-logo" placeholder="e.g. img/logoo.png">
+                </div>
+                <button class="btn btn-primary" onclick="adminSaveSiteInfo()"><i class="fas fa-save"></i> Save Changes</button>
+            </div>
+
+            <!-- Panel Footer -->
+            <div class="admin-panel-footer">
+                <button class="btn btn-cancel btn-sm" onclick="adminLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </div>
+    </div>
     <!-- ========================
          MAIN GRID LAYOUT
          Two columns on desktop:
