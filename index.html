@@ -98,6 +98,7 @@
                 <button class="admin-tab" onclick="switchAdminTab('tab-events', this)"><i class="fas fa-calendar-alt"></i> Events</button>
                 <button class="admin-tab" onclick="switchAdminTab('tab-announcements', this)"><i class="fas fa-bullhorn"></i> Announcements</button>
                 <button class="admin-tab" onclick="switchAdminTab('tab-leaders', this)"><i class="fas fa-users"></i> Leaders</button>
+                <button class="admin-tab" onclick="switchAdminTab('tab-gallery', this)"><i class="fas fa-images"></i> Gallery</button>
                 <button class="admin-tab" onclick="switchAdminTab('tab-siteinfo', this)"><i class="fas fa-info-circle"></i> Site Info</button>
             </div>
 
@@ -108,7 +109,9 @@
                     <input type="text" id="adm-act-name" placeholder="Activity name">
                     <input type="date" id="adm-act-date">
                     <input type="text" id="adm-act-desc" placeholder="Description">
-                    <button class="btn btn-primary btn-sm" onclick="adminAddActivity()"><i class="fas fa-plus"></i> Add</button>
+                    <button class="btn btn-primary btn-sm" id="adm-act-btn" onclick="adminAddActivity()"><i class="fas fa-plus"></i> Add</button>
+                    <button class="btn btn-secondary btn-sm" id="adm-act-update-btn" onclick="adminUpdateActivity()" style="display:none;"><i class="fas fa-save"></i> Update</button>
+                    <button class="btn btn-cancel btn-sm" id="adm-act-cancel-btn" onclick="adminCancelActivity()" style="display:none;"><i class="fas fa-times"></i> Cancel</button>
                 </div>
                 <div id="adm-activities-list" class="admin-list"></div>
             </div>
@@ -120,7 +123,13 @@
                     <input type="text" id="adm-evt-name" placeholder="Event name">
                     <input type="text" id="adm-evt-date" placeholder="e.g. January 20, 2026">
                     <input type="text" id="adm-evt-venue" placeholder="Venue">
-                    <button class="btn btn-primary btn-sm" onclick="adminAddEvent()"><i class="fas fa-plus"></i> Add</button>
+                </div>
+                <div class="admin-form-row">
+                    <input type="file" id="adm-evt-image" accept="image/*" onchange="previewAdminEventImage(this)">
+                    <img id="adm-evt-preview" class="admin-preview-img" src="" alt="preview" style="display:none;">
+                    <button class="btn btn-primary btn-sm" id="adm-evt-btn" onclick="adminAddEvent()"><i class="fas fa-plus"></i> Add</button>
+                    <button class="btn btn-secondary btn-sm" id="adm-evt-update-btn" onclick="adminUpdateEvent()" style="display:none;"><i class="fas fa-save"></i> Update</button>
+                    <button class="btn btn-cancel btn-sm" id="adm-evt-cancel-btn" onclick="adminCancelEvent()" style="display:none;"><i class="fas fa-times"></i> Cancel</button>
                 </div>
                 <div id="adm-events-list" class="admin-list"></div>
             </div>
@@ -131,7 +140,9 @@
                 <div class="admin-form-row">
                     <input type="text" id="adm-ann-title" placeholder="Title (bold part)">
                     <input type="text" id="adm-ann-body" placeholder="Announcement body text">
-                    <button class="btn btn-primary btn-sm" onclick="adminAddAnnouncement()"><i class="fas fa-plus"></i> Add</button>
+                    <button class="btn btn-primary btn-sm" id="adm-ann-btn" onclick="adminAddAnnouncement()"><i class="fas fa-plus"></i> Add</button>
+                    <button class="btn btn-secondary btn-sm" id="adm-ann-update-btn" onclick="adminUpdateAnnouncement()" style="display:none;"><i class="fas fa-save"></i> Update</button>
+                    <button class="btn btn-cancel btn-sm" id="adm-ann-cancel-btn" onclick="adminCancelAnnouncement()" style="display:none;"><i class="fas fa-times"></i> Cancel</button>
                 </div>
                 <div id="adm-announcements-list" class="admin-list"></div>
             </div>
@@ -143,10 +154,30 @@
                     <input type="text" id="adm-ldr-name" placeholder="Full name">
                     <input type="text" id="adm-ldr-role" placeholder="Role (e.g. President)">
                     <input type="text" id="adm-ldr-desc" placeholder="Short description">
+                </div>
+                <div class="admin-form-row">
                     <input type="text" id="adm-ldr-icon" placeholder="FA icon class (e.g. fa-user-tie)">
-                    <button class="btn btn-primary btn-sm" onclick="adminAddLeader()"><i class="fas fa-plus"></i> Add</button>
+                    <input type="file" id="adm-ldr-photo" accept="image/*" onchange="previewAdminLeaderPhoto(this)">
+                    <img id="adm-ldr-preview" class="admin-preview-img" src="" alt="preview" style="display:none;">
+                    <button class="btn btn-primary btn-sm" id="adm-ldr-btn" onclick="adminAddLeader()"><i class="fas fa-plus"></i> Add</button>
+                    <button class="btn btn-secondary btn-sm" id="adm-ldr-update-btn" onclick="adminUpdateLeader()" style="display:none;"><i class="fas fa-save"></i> Update</button>
+                    <button class="btn btn-cancel btn-sm" id="adm-ldr-cancel-btn" onclick="adminCancelLeader()" style="display:none;"><i class="fas fa-times"></i> Cancel</button>
                 </div>
                 <div id="adm-leaders-list" class="admin-list"></div>
+            </div>
+
+            <!-- Tab: Gallery -->
+            <div id="tab-gallery" class="admin-tab-content">
+                <h3 class="admin-section-heading"><i class="fas fa-images"></i> Manage Gallery</h3>
+                <div class="admin-form-row">
+                    <input type="text" id="adm-gal-title" placeholder="Image caption / title">
+                    <input type="file" id="adm-gal-file" accept="image/*" onchange="previewAdminGalleryImage(this)">
+                    <img id="adm-gal-preview" class="admin-preview-img" src="" alt="preview" style="display:none;">
+                    <button class="btn btn-primary btn-sm" id="adm-gal-btn" onclick="adminAddGallery()"><i class="fas fa-plus"></i> Add</button>
+                    <button class="btn btn-secondary btn-sm" id="adm-gal-update-btn" onclick="adminUpdateGallery()" style="display:none;"><i class="fas fa-save"></i> Update</button>
+                    <button class="btn btn-cancel btn-sm" id="adm-gal-cancel-btn" onclick="adminCancelGallery()" style="display:none;"><i class="fas fa-times"></i> Cancel</button>
+                </div>
+                <div id="adm-gallery-list" class="admin-list"></div>
             </div>
 
             <!-- Tab: Site Info -->
@@ -165,10 +196,24 @@
                     <textarea id="adm-site-welcome" rows="4" placeholder="Welcome message text..."></textarea>
                 </div>
                 <div class="form-group">
-                    <label><i class="fas fa-image"></i> Logo Image URL or path</label>
-                    <input type="text" id="adm-site-logo" placeholder="e.g. img/logoo.png">
+                    <label><i class="fas fa-image"></i> Logo Image (file or path)</label>
+                    <input type="file" id="adm-site-logo-file" accept="image/*" onchange="previewAdminLogo(this)">
+                    <img id="adm-logo-preview" class="admin-preview-img" src="" alt="preview" style="display:none;">
+                    <input type="text" id="adm-site-logo" placeholder="e.g. img/logoo.png (fallback if no file)">
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-list"></i> Mission Items (one per line)</label>
+                    <textarea id="adm-site-mission" rows="6" placeholder="Promote academic excellence...
+Foster unity...
+Organize social activities...
+"></textarea>
+                </div>
+                <div class="form-group">
+                    <label><i class="fas fa-concierge-bell"></i> Footer Text</label>
+                    <input type="text" id="adm-site-footer" placeholder="e.g. Made with dedication for EASTC Students">
                 </div>
                 <button class="btn btn-primary" onclick="adminSaveSiteInfo()"><i class="fas fa-save"></i> Save Changes</button>
+                <button class="btn btn-cancel" style="margin-left:10px;" onclick="adminResetAll()"><i class="fas fa-undo"></i> Reset to Defaults</button>
             </div>
 
             <!-- Panel Footer -->
@@ -223,7 +268,8 @@
                 <div class="leaders-grid">
                     <!-- Leader Card 1 -->
                     <div class="leader-card">
-                        <div class="leader-icon">
+                        <div class="leader-photo">
+                            <img src="" alt="John Student" id="leader-photo-0" class="leader-img">
                             <i class="fas fa-user-tie"></i>
                         </div>
                         <h3>John Student</h3>
@@ -232,7 +278,8 @@
                     </div>
                     <!-- Leader Card 2 -->
                     <div class="leader-card">
-                        <div class="leader-icon">
+                        <div class="leader-photo">
+                            <img src="" alt="Amina Hassan" id="leader-photo-1" class="leader-img">
                             <i class="fas fa-user-graduate"></i>
                         </div>
                         <h3>Amina Hassan</h3>
@@ -241,7 +288,8 @@
                     </div>
                     <!-- Leader Card 3 -->
                     <div class="leader-card">
-                        <div class="leader-icon">
+                        <div class="leader-photo">
+                            <img src="" alt="Peter Joseph" id="leader-photo-2" class="leader-img">
                             <i class="fas fa-user-edit"></i>
                         </div>
                         <h3>Peter Joseph</h3>
@@ -250,7 +298,8 @@
                     </div>
                     <!-- Leader Card 4 -->
                     <div class="leader-card">
-                        <div class="leader-icon">
+                        <div class="leader-photo">
+                            <img src="" alt="Grace Mwamba" id="leader-photo-3" class="leader-img">
                             <i class="fas fa-user-shield"></i>
                         </div>
                         <h3>Grace Mwamba</h3>
@@ -265,44 +314,62 @@
                     <i class="fas fa-calendar-alt"></i> Upcoming Events
                 </h2>
                 <p>Stay updated with our upcoming events and activities:</p>
-                <!-- Events Table -->
-                <div class="table-wrapper">
-                    <table id="events-table">
-                        <thead>
-                            <tr>
-                                <th><i class="fas fa-tag"></i> Event Name</th>
-                                <th><i class="fas fa-calendar"></i> Date</th>
-                                <th><i class="fas fa-map-marker-alt"></i> Venue</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>Freshers' Welcome Party</td>
-                                <td>January 20, 2026</td>
-                                <td>EASTC Main Hall</td>
-                            </tr>
-                            <tr>
-                                <td>Inter-College Sports Day</td>
-                                <td>February 14, 2026</td>
-                                <td>EASTC Sports Ground</td>
-                            </tr>
-                            <tr>
-                                <td>Academic Workshop: Data Science</td>
-                                <td>March 5, 2026</td>
-                                <td>Computer Lab 2</td>
-                            </tr>
-                            <tr>
-                                <td>Cultural Night</td>
-                                <td>April 10, 2026</td>
-                                <td>EASTC Auditorium</td>
-                            </tr>
-                            <tr>
-                                <td>Leadership Seminar</td>
-                                <td>May 22, 2026</td>
-                                <td>Conference Room A</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="events-grid" id="events-grid">
+                    <!-- Event Card 1 -->
+                    <div class="event-card">
+                        <div class="event-card-img-wrap">
+                            <img src="" alt="Freshers' Welcome Party" class="event-card-image" id="event-img-0">
+                        </div>
+                        <div class="event-card-content">
+                            <h4 class="event-card-title">Freshers' Welcome Party</h4>
+                            <p class="event-card-date"><i class="fas fa-calendar"></i> January 20, 2026</p>
+                            <p class="event-card-venue"><i class="fas fa-map-marker-alt"></i> EASTC Main Hall</p>
+                        </div>
+                    </div>
+                    <!-- Event Card 2 -->
+                    <div class="event-card">
+                        <div class="event-card-img-wrap">
+                            <img src="" alt="Inter-College Sports Day" class="event-card-image" id="event-img-1">
+                        </div>
+                        <div class="event-card-content">
+                            <h4 class="event-card-title">Inter-College Sports Day</h4>
+                            <p class="event-card-date"><i class="fas fa-calendar"></i> February 14, 2026</p>
+                            <p class="event-card-venue"><i class="fas fa-map-marker-alt"></i> EASTC Sports Ground</p>
+                        </div>
+                    </div>
+                    <!-- Event Card 3 -->
+                    <div class="event-card">
+                        <div class="event-card-img-wrap">
+                            <img src="" alt="Academic Workshop: Data Science" class="event-card-image" id="event-img-2">
+                        </div>
+                        <div class="event-card-content">
+                            <h4 class="event-card-title">Academic Workshop: Data Science</h4>
+                            <p class="event-card-date"><i class="fas fa-calendar"></i> March 5, 2026</p>
+                            <p class="event-card-venue"><i class="fas fa-map-marker-alt"></i> Computer Lab 2</p>
+                        </div>
+                    </div>
+                    <!-- Event Card 4 -->
+                    <div class="event-card">
+                        <div class="event-card-img-wrap">
+                            <img src="" alt="Cultural Night" class="event-card-image" id="event-img-3">
+                        </div>
+                        <div class="event-card-content">
+                            <h4 class="event-card-title">Cultural Night</h4>
+                            <p class="event-card-date"><i class="fas fa-calendar"></i> April 10, 2026</p>
+                            <p class="event-card-venue"><i class="fas fa-map-marker-alt"></i> EASTC Auditorium</p>
+                        </div>
+                    </div>
+                    <!-- Event Card 5 -->
+                    <div class="event-card">
+                        <div class="event-card-img-wrap">
+                            <img src="" alt="Leadership Seminar" class="event-card-image" id="event-img-4">
+                        </div>
+                        <div class="event-card-content">
+                            <h4 class="event-card-title">Leadership Seminar</h4>
+                            <p class="event-card-date"><i class="fas fa-calendar"></i> May 22, 2026</p>
+                            <p class="event-card-venue"><i class="fas fa-map-marker-alt"></i> Conference Room A</p>
+                        </div>
+                    </div>
                 </div>
             </section>
             <!-- ---- ANNOUNCEMENTS SECTION ---- -->
@@ -373,6 +440,18 @@
                     </li>
                 </ul>
             </section>
+            <!-- ---- GALLERY SECTION ---- -->
+            <section id="gallery" class="content-section">
+                <h2 class="section-title">
+                    <i class="fas fa-images"></i> Photo Gallery
+                </h2>
+                <p>Explore moments from our campus life and events:</p>
+                <div class="gallery-grid" id="gallery-grid">
+                    <p class="empty-message" id="gallery-empty-msg">
+                        <i class="fas fa-info-circle"></i> No gallery images yet. Add some from the admin panel!
+                    </p>
+                </div>
+            </section>
             <!-- ---- CONTACT SECTION ---- -->
             <section id="contact" class="content-section">
                 <h2 class="section-title">
@@ -398,47 +477,6 @@
                     </button>
                 </form>
             </section>
-            <!-- ---- CRUD: STUDENT ACTIVITIES MANAGER ---- -->
-            <section id="activities" class="content-section">
-                <h2 class="section-title">
-                    <i class="fas fa-tasks"></i> Student Activities Manager
-                </h2>
-                <p>Use this tool to manage student activities (Add, View, Edit, Delete):</p>
-                <!-- Activity Input Form -->
-                <div class="activity-form">
-                    <div class="form-group">
-                        <label for="activity-name"><i class="fas fa-pen"></i> Activity Name</label>
-                        <input type="text" id="activity-name" placeholder="e.g. Debate Competition">
-                    </div>
-                    <div class="form-group">
-                        <label for="activity-date"><i class="fas fa-calendar-day"></i> Date</label>
-                        <input type="date" id="activity-date">
-                    </div>
-                    <div class="form-group">
-                        <label for="activity-desc"><i class="fas fa-align-left"></i> Description</label>
-                        <input type="text" id="activity-desc" placeholder="Brief description of the activity">
-                    </div>
-                    <!-- Add / Update Buttons -->
-                    <div class="activity-buttons">
-                        <button id="add-activity-btn" class="btn btn-primary" onclick="addActivity()">
-                            <i class="fas fa-plus-circle"></i> Add Activity
-                        </button>
-                        <button id="update-activity-btn" class="btn btn-secondary" onclick="updateActivity()" style="display: none;">
-                            <i class="fas fa-save"></i> Update Activity
-                        </button>
-                        <button id="cancel-edit-btn" class="btn btn-cancel" onclick="cancelEdit()" style="display: none;">
-                            <i class="fas fa-times-circle"></i> Cancel
-                        </button>
-                    </div>
-                </div>
-                <!-- Activities List Display -->
-                <div id="activities-list" class="activities-list">
-                    <!-- Activities will be rendered here by JavaScript -->
-                    <p class="empty-message" id="empty-msg">
-                        <i class="fas fa-info-circle"></i> No activities added yet. Use the form above to add one!
-                    </p>
-                </div>
-            </section>
         </main>
         <!-- ========================
              SIDEBAR
@@ -451,7 +489,7 @@
                     <li><a href="#home"><i class="fas fa-chevron-right"></i> Home</a></li>
                     <li><a href="#leaders"><i class="fas fa-chevron-right"></i> Our Leaders</a></li>
                     <li><a href="#events"><i class="fas fa-chevron-right"></i> Events Calendar</a></li>
-                    <li><a href="#activities"><i class="fas fa-chevron-right"></i> Activities Manager</a></li>
+                    <li><a href="#gallery"><i class="fas fa-chevron-right"></i> Photo Gallery</a></li>
                     <li><a href="#contact"><i class="fas fa-chevron-right"></i> Get in Touch</a></li>
                 </ul>
             </div>

@@ -2,584 +2,266 @@
    EASTC Students Organization Portal
    JavaScript File (script.js)
    Features:
-   - CRUD Operations for Student Activities
    - Contact Form Handling
    - Mobile Navigation Toggle
    - Toast Notifications
+   - Admin Panel with PHP Backend API
+   - Image uploads via FormData
    ============================================= */
-// ========================
-// ACTIVITIES DATA STORAGE
-// Activities are stored in a JavaScript array
-// ========================
-// Array to hold all activities (our "database")
+
+// API base URL (adjust if hosting in a subdirectory)
+const API_BASE = 'backend/';
+
+// Admin auth token (stored in memory, not localStorage for security)
+let adminToken = '';
+let adminLoggedIn = false;
+
+// Data caches (fetched from backend)
 let activities = [];
-// Variable to track which activity is being edited (-1 means none)
-let editingIndex = -1;
-// ========================
-// DOM ELEMENT REFERENCES
-// Getting references to HTML elements we'll need
-// ========================
-// Activity form inputs
-const activityNameInput = document.getElementById('activity-name');
-const activityDateInput = document.getElementById('activity-date');
-const activityDescInput = document.getElementById('activity-desc');
-// Buttons
-const addBtn = document.getElementById('add-activity-btn');
-const updateBtn = document.getElementById('update-activity-btn');
-const cancelBtn = document.getElementById('cancel-edit-btn');
-// Display area
-const activitiesList = document.getElementById('activities-list');
-const emptyMsg = document.getElementById('empty-msg');
-// ========================
-// CREATE - Add a New Activity
-// ========================
-function addActivity() {
-    // Get values from the input fields
-    const name = activityNameInput.value.trim();
-    const date = activityDateInput.value;
-    const description = activityDescInput.value.trim();
-    // Validate that all fields are filled
-    if (name === '' || date === '' || description === '') {
-        showToast('Please fill in all fields before adding an activity.', 'error');
-        return; // Stop the function if validation fails
-    }
-    // Create a new activity object
-    const newActivity = {
-        name: name,
-        date: date,
-        description: description
-    };
-    // Add the activity to our array
-    activities.push(newActivity);
-    // Clear the input fields
-    clearForm();
-    // Re-render the activities list on the page
-    renderActivities();
-    // Show success message
-    showToast('Activity added successfully!', 'success');
+let adminEvents = [];
+let adminAnnouncements = [];
+let adminLeaders = [];
+let adminGallery = [];
+let siteInfo = {};
+
+// Editing state
+let editingActivityIndex = -1;
+let editingEventIndex = -1;
+let editingAnnouncementIndex = -1;
+let editingLeaderIndex = -1;
+let editingGalleryIndex = -1;
+
+// Temporary image files for previews
+let tempEventImage = null;
+let tempLeaderPhoto = null;
+let tempGalleryImage = null;
+let tempLogoImage = null;
+
+// ============================================================
+// API HELPERS
+// ============================================================
+async function apiGet(endpoint) {
+    const res = await fetch(API_BASE + endpoint);
+    if (!res.ok) throw new Error('API error: ' + res.status);
+    return res.json();
 }
-// ========================
-// READ - Display All Activities
-// ========================
-function renderActivities() {
-    // Clear the current list display
-    activitiesList.innerHTML = '';
-    // Check if there are no activities
-    if (activities.length === 0) {
-        // Show the empty message
-        activitiesList.innerHTML = `
-            <p class="empty-message" id="empty-msg">
-                <i class="fas fa-info-circle"></i> No activities added yet. Use the form above to add one!
-            </p>
-        `;
-        return; // Stop here
-    }
-    // Loop through each activity and create HTML for it
-    for (let i = 0; i < activities.length; i++) {
-        // Format the date for display
-        const formattedDate = formatDate(activities[i].date);
-        // Create the HTML for this activity item
-        const activityHTML = `
-            <div class="activity-item" id="activity-${i}">
-                <div class="activity-info">
-                    <h4><i class="fas fa-clipboard-list" style="color: #F4C430; margin-right: 8px;"></i>${activities[i].name}</h4>
-                    <p class="activity-date"><i class="fas fa-calendar-day"></i> ${formattedDate}</p>
-                    <p class="activity-description">${activities[i].description}</p>
-                </div>
-                <div class="activity-actions">
-                    <button class="btn btn-sm btn-edit" onclick="editActivity(${i})" title="Edit this activity">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button class="btn btn-sm btn-delete" onclick="deleteActivity(${i})" title="Delete this activity">
-                        <i class="fas fa-trash-alt"></i> Delete
-                    </button>
-                </div>
-            </div>
-        `;
-        // Add the HTML to the activities list
-        activitiesList.innerHTML += activityHTML;
-    }
+
+async function apiPost(endpoint, data) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
+    const res = await fetch(API_BASE + endpoint, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('API error: ' + res.status);
+    return res.json();
 }
-// ========================
-// UPDATE - Edit an Existing Activity
-// ========================
-// Step 1: Load the activity data into the form for editing
-function editActivity(index) {
-    // Store the index of the activity being edited
-    editingIndex = index;
-    // Get the activity from the array
-    const activity = activities[index];
-    // Fill the form inputs with the activity's current data
-    activityNameInput.value = activity.name;
-    activityDateInput.value = activity.date;
-    activityDescInput.value = activity.description;
-    // Show the Update and Cancel buttons, hide the Add button
-    addBtn.style.display = 'none';
-    updateBtn.style.display = 'inline-flex';
-    cancelBtn.style.display = 'inline-flex';
-    // Scroll to the form so the user can see it
-    document.getElementById('activities').scrollIntoView({ behavior: 'smooth' });
-    // Show a message
-    showToast('Editing: ' + activity.name, 'success');
+
+async function apiPut(endpoint, data) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
+    const res = await fetch(API_BASE + endpoint, {
+        method: 'PUT',
+        headers: headers,
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('API error: ' + res.status);
+    return res.json();
 }
-// Step 2: Save the updated activity
-function updateActivity() {
-    // Get the updated values from the form
-    const name = activityNameInput.value.trim();
-    const date = activityDateInput.value;
-    const description = activityDescInput.value.trim();
-    // Validate that all fields are filled
-    if (name === '' || date === '' || description === '') {
-        showToast('Please fill in all fields before updating.', 'error');
-        return;
-    }
-    // Update the activity in the array
-    activities[editingIndex] = {
-        name: name,
-        date: date,
-        description: description
-    };
-    // Reset the form and buttons
-    cancelEdit();
-    // Re-render the activities list
-    renderActivities();
-    // Show success message
-    showToast('Activity updated successfully!', 'success');
+
+async function apiDelete(endpoint, data) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
+    const res = await fetch(API_BASE + endpoint, {
+        method: 'DELETE',
+        headers: headers,
+        body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('API error: ' + res.status);
+    return res.json();
 }
-// Cancel editing and reset the form
-function cancelEdit() {
-    // Reset the editing index
-    editingIndex = -1;
-    // Clear the form
-    clearForm();
-    // Show the Add button, hide Update and Cancel buttons
-    addBtn.style.display = 'inline-flex';
-    updateBtn.style.display = 'none';
-    cancelBtn.style.display = 'none';
+
+async function apiUpload(file) {
+    const formData = new FormData();
+    formData.append('image', file);
+    const headers = {};
+    if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
+    const res = await fetch(API_BASE + 'upload.php', {
+        method: 'POST',
+        headers: headers,
+        body: formData
+    });
+    if (!res.ok) throw new Error('Upload error: ' + res.status);
+    return res.json();
 }
-// ========================
-// DELETE - Remove an Activity
-// ========================
-function deleteActivity(index) {
-    // Ask for confirmation before deleting
-    const activityName = activities[index].name;
-    const confirmDelete = confirm('Are you sure you want to delete "' + activityName + '"?');
-    if (confirmDelete) {
-        // Remove the activity from the array using splice
-        activities.splice(index, 1);
-        // If we were editing this item, cancel the edit
-        if (editingIndex === index) {
-            cancelEdit();
-        } else if (editingIndex > index) {
-            // Adjust the editing index if needed
-            editingIndex--;
-        }
-        // Re-render the activities list
-        renderActivities();
-        // Show success message
-        showToast('Activity "' + activityName + '" deleted.', 'success');
-    }
-}
-// ========================
-// HELPER FUNCTIONS
-// ========================
-// Clear all form inputs
-function clearForm() {
-    activityNameInput.value = '';
-    activityDateInput.value = '';
-    activityDescInput.value = '';
-}
-// Format a date string (YYYY-MM-DD) to a readable format
+
+// ============================================================
+// HELPER: format date
+// ============================================================
 function formatDate(dateString) {
-    // Create a Date object from the string
+    if (!dateString) return '';
     const date = new Date(dateString + 'T00:00:00');
-    // Define month names
-    const months = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
-    ];
-    // Build the formatted date string
-    const month = months[date.getMonth()];
-    const day = date.getDate();
-    const year = date.getFullYear();
-    return month + ' ' + day + ', ' + year;
+    if (isNaN(date.getTime())) return dateString;
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    return months[date.getMonth()] + ' ' + date.getDate() + ', ' + date.getFullYear();
 }
-// ========================
+
+// ============================================================
 // TOAST NOTIFICATION
-// Shows a brief message at the bottom of the screen
-// ========================
+// ============================================================
 function showToast(message, type) {
-    // Check if a toast already exists and remove it
     const existingToast = document.querySelector('.toast');
-    if (existingToast) {
-        existingToast.remove();
-    }
-    // Create the toast element
+    if (existingToast) { existingToast.remove(); }
     const toast = document.createElement('div');
     toast.className = 'toast ' + type;
-    // Choose icon based on type
     const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
-    // Set the toast content
     toast.innerHTML = '<i class="fas ' + icon + '"></i> ' + message;
-    // Add the toast to the page
     document.body.appendChild(toast);
-    // Show the toast (small delay for CSS transition)
-    setTimeout(function() {
-        toast.classList.add('show');
-    }, 10);
-    // Remove the toast after 3 seconds
-    setTimeout(function() {
-        toast.classList.remove('show');
-        // Remove from DOM after fade out
-        setTimeout(function() {
-            toast.remove();
-        }, 300);
-    }, 3000);
+    setTimeout(function() { toast.classList.add('show'); }, 10);
+    setTimeout(function() { toast.classList.remove('show'); setTimeout(function() { toast.remove(); }, 300); }, 3000);
 }
-// ========================
-// CONTACT FORM HANDLER
-// ========================
-// Get the contact form element
+
+// ============================================================
+// CONTACT FORM
+// ============================================================
 const contactForm = document.getElementById('contact-form');
-// Listen for form submission
-contactForm.addEventListener('submit', function(event) {
-    // Prevent the default form submission (page reload)
-    event.preventDefault();
-    // Get the form values
-    const fullName = document.getElementById('fullname').value.trim();
-    const email = document.getElementById('email').value.trim();
-    const message = document.getElementById('message').value.trim();
-    // Basic validation
-    if (fullName === '' || email === '' || message === '') {
-        showToast('Please fill in all contact form fields.', 'error');
-        return;
-    }
-    // In a real application, this data would be sent to a server
-    // For now, we just show a success message
-    showToast('Thank you, ' + fullName + '! Your message has been received.', 'success');
-    // Clear the form
-    contactForm.reset();
-});
-// ========================
-// MOBILE NAVIGATION TOGGLE
-// ========================
-// Get the menu toggle button and nav list
+if (contactForm) {
+    contactForm.addEventListener('submit', function(event) {
+        event.preventDefault();
+        const fullName = document.getElementById('fullname').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const message = document.getElementById('message').value.trim();
+        if (fullName === '' || email === '' || message === '') {
+            showToast('Please fill in all contact form fields.', 'error');
+            return;
+        }
+        showToast('Thank you, ' + fullName + '! Your message has been received.', 'success');
+        contactForm.reset();
+    });
+}
+
+// ============================================================
+// MOBILE NAVIGATION
+// ============================================================
 const menuToggle = document.getElementById('menu-toggle');
 const navList = document.getElementById('nav-list');
-// Toggle the navigation menu on mobile
-menuToggle.addEventListener('click', function() {
-    navList.classList.toggle('active');
-    // Change the icon between bars and times
-    const icon = menuToggle.querySelector('i');
-    if (navList.classList.contains('active')) {
-        icon.className = 'fas fa-times';
-    } else {
-        icon.className = 'fas fa-bars';
-    }
-});
-// Close mobile menu when a nav link is clicked
+if (menuToggle) {
+    menuToggle.addEventListener('click', function() {
+        navList.classList.toggle('active');
+        const icon = menuToggle.querySelector('i');
+        icon.className = navList.classList.contains('active') ? 'fas fa-times' : 'fas fa-bars';
+    });
+}
 const navLinks = document.querySelectorAll('.nav-link');
 navLinks.forEach(function(link) {
     link.addEventListener('click', function() {
-        // Close the mobile menu
         navList.classList.remove('active');
         const icon = menuToggle.querySelector('i');
         icon.className = 'fas fa-bars';
-        // Update active state
-        navLinks.forEach(function(l) {
-            l.classList.remove('active');
-        });
+        navLinks.forEach(function(l) { l.classList.remove('active'); });
         this.classList.add('active');
     });
 });
-// ========================
-// ACTIVE NAVIGATION ON SCROLL
-// Highlights the current section in the nav
-// ========================
 window.addEventListener('scroll', function() {
-    // Get all sections
     const sections = document.querySelectorAll('.content-section');
     let currentSection = '';
     sections.forEach(function(section) {
         const sectionTop = section.offsetTop - 100;
-        if (window.scrollY >= sectionTop) {
-            currentSection = section.getAttribute('id');
-        }
+        if (window.scrollY >= sectionTop) { currentSection = section.getAttribute('id'); }
     });
-    // Update nav link active states
     navLinks.forEach(function(link) {
         link.classList.remove('active');
-        if (link.getAttribute('href') === '#' + currentSection) {
-            link.classList.add('active');
-        }
+        if (link.getAttribute('href') === '#' + currentSection) { link.classList.add('active'); }
     });
 });
-// ========================
-// INITIALIZATION
-// Code that runs when the page first loads
-// ========================
-// Add some sample activities so the page isn't empty
-function loadSampleData() {
-    activities = [
-        {
-            name: 'Debate Competition',
-            date: '2026-02-10',
-            description: 'Annual inter-class debate competition on current affairs.'
-        },
-        {
-            name: 'Community Clean-Up Day',
-            date: '2026-03-15',
-            description: 'Volunteer activity to clean and beautify the campus environment.'
-        },
-        {
-            name: 'Programming Workshop',
-            date: '2026-04-05',
-            description: 'Introductory workshop on Python programming for beginners.'
-        }
-    ];
-    // Render the sample activities
-    renderActivities();
-}
-// Load sample data when the page loads
-loadSampleData();
 
 // ============================================================
-// ADMIN PANEL
-// Simple JS-only admin system. Credentials are checked
-// client-side (suitable for a demo / beginner project).
-// Default: username = "admin", password = "eastc2026"
+// SYNC FUNCTIONS - render page content from data
 // ============================================================
-
-const ADMIN_USER = 'admin';
-const ADMIN_PASS = 'eastc2026';
-
-// Track admin login state
-let adminLoggedIn = false;
-
-// ---- Admin data stores (mirrors the live page data) ----
-let adminEvents = [
-    { name: "Freshers' Welcome Party",          date: 'January 20, 2026',   venue: 'EASTC Main Hall'     },
-    { name: 'Inter-College Sports Day',          date: 'February 14, 2026',  venue: 'EASTC Sports Ground' },
-    { name: 'Academic Workshop: Data Science',   date: 'March 5, 2026',      venue: 'Computer Lab 2'      },
-    { name: 'Cultural Night',                    date: 'April 10, 2026',     venue: 'EASTC Auditorium'    },
-    { name: 'Leadership Seminar',                date: 'May 22, 2026',       venue: 'Conference Room A'   }
-];
-
-let adminAnnouncements = [
-    { title: 'Registration Deadline',   body: 'All students must complete course registration by January 15, 2026.' },
-    { title: 'Library Hours Extended',  body: 'The library will now remain open until 10:00 PM on weekdays during exam period.' },
-    { title: 'Student ID Replacement',  body: 'Students who lost their IDs should visit the administration office for replacement.' },
-    { title: 'Scholarship Opportunities', body: 'New scholarship applications for the 2026/2027 academic year are now open.' },
-    { title: 'Health Check-Up',         body: 'Free health screening will be available at the campus clinic from January 25-30, 2026.' }
-];
-
-let adminLeaders = [
-    { name: 'John Student',  role: 'President',      desc: 'Leading the organization with vision and dedication to serve all students.',       icon: 'fa-user-tie'     },
-    { name: 'Amina Hassan',  role: 'Vice President',  desc: 'Supporting organizational initiatives and driving student engagement.',           icon: 'fa-user-graduate' },
-    { name: 'Peter Joseph',  role: 'Secretary',       desc: 'Managing communication and keeping accurate organizational records.',             icon: 'fa-user-edit'    },
-    { name: 'Grace Mwamba',  role: 'Treasurer',       desc: 'Overseeing financial planning and transparent budget management.',               icon: 'fa-user-shield'  }
-];
-
-// ========================
-// LOGIN / LOGOUT
-// ========================
-function openAdminLogin() {
-    if (adminLoggedIn) {
-        openAdminPanel();
-        return;
-    }
-    document.getElementById('admin-login-modal').style.display = 'flex';
-    document.getElementById('admin-login-error').style.display = 'none';
-    document.getElementById('admin-username').value = '';
-    document.getElementById('admin-password').value = '';
-    setTimeout(function() { document.getElementById('admin-username').focus(); }, 100);
+function syncAll() {
+    syncSiteInfo();
+    syncMission();
+    syncLeadersGrid();
+    syncEventsGrid();
+    syncAnnouncementsList();
+    syncGalleryGrid();
+    syncActivities();
 }
 
-function closeAdminLogin() {
-    document.getElementById('admin-login-modal').style.display = 'none';
-}
-
-function doAdminLogin() {
-    var user = document.getElementById('admin-username').value.trim();
-    var pass = document.getElementById('admin-password').value;
-    if (user === ADMIN_USER && pass === ADMIN_PASS) {
-        adminLoggedIn = true;
-        closeAdminLogin();
-        openAdminPanel();
-        // Update the nav button to show unlocked icon
-        var btn = document.getElementById('admin-nav-btn');
-        if (btn) { btn.innerHTML = '<i class="fas fa-unlock"></i> Admin'; }
-    } else {
-        document.getElementById('admin-login-error').style.display = 'block';
-    }
-}
-
-// Allow Enter key to submit login
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && document.getElementById('admin-login-modal').style.display === 'flex') {
-        doAdminLogin();
-    }
-});
-
-function adminLogout() {
-    adminLoggedIn = false;
-    closeAdminPanel();
-    var btn = document.getElementById('admin-nav-btn');
-    if (btn) { btn.innerHTML = '<i class="fas fa-lock"></i> Admin'; }
-    showToast('Logged out of admin panel.', 'success');
-}
-
-// ========================
-// OPEN / CLOSE PANEL
-// ========================
-function openAdminPanel() {
-    document.getElementById('admin-panel-modal').style.display = 'flex';
-    // Load site info fields
-    document.getElementById('adm-site-title').value   = document.querySelector('.logo h1').textContent;
-    document.getElementById('adm-site-tagline').value = document.querySelector('.tagline').textContent;
-    document.getElementById('adm-site-welcome').value = document.querySelector('.welcome-message').innerText.replace(/^\s+|\s+$/g, '');
+function syncSiteInfo() {
+    if (!siteInfo) return;
     var logoImg = document.querySelector('.logo img');
-    document.getElementById('adm-site-logo').value = logoImg ? logoImg.getAttribute('src') : '';
-    // Render all lists
-    renderAdminActivities();
-    renderAdminEvents();
-    renderAdminAnnouncements();
-    renderAdminLeaders();
+    if (logoImg) {
+        if (siteInfo.logo_file) { logoImg.setAttribute('src', siteInfo.logo_file); }
+        else if (siteInfo.logo) { logoImg.setAttribute('src', siteInfo.logo); }
+    }
+    var h1 = document.querySelector('.logo h1');
+    if (h1) { h1.textContent = siteInfo.title || 'EASTC Students Organization'; document.title = (siteInfo.title || 'EASTC Students Organization') + ' Portal'; }
+    var tag = document.querySelector('.tagline');
+    if (tag) { tag.textContent = siteInfo.tagline || ''; }
+    var wm = document.querySelector('.welcome-message');
+    if (wm) { wm.innerHTML = '<i class="fas fa-star accent-icon"></i> ' + (siteInfo.welcome || ''); }
+    var ft = document.querySelector('.footer-tagline');
+    if (ft) { ft.innerHTML = '<i class="fas fa-heart"></i> ' + (siteInfo.footer || ''); }
 }
 
-function closeAdminPanel() {
-    document.getElementById('admin-panel-modal').style.display = 'none';
+function syncMission() {
+    var ml = document.querySelector('.mission-list');
+    if (!ml) return;
+    var items = [];
+    if (Array.isArray(siteInfo.mission)) {
+        items = siteInfo.mission;
+    } else if (typeof siteInfo.mission === 'string') {
+        items = siteInfo.mission.split('\n').filter(function(s) { return s.trim(); });
+    }
+    ml.innerHTML = items.map(function(item) {
+        return '<li><i class="fas fa-check-circle"></i> ' + item + '</li>';
+    }).join('');
 }
 
-// ========================
-// TAB SWITCHING
-// ========================
-function switchAdminTab(tabId, btn) {
-    // Hide all tab contents
-    document.querySelectorAll('.admin-tab-content').forEach(function(t) { t.classList.remove('active'); });
-    // Deactivate all tab buttons
-    document.querySelectorAll('.admin-tab').forEach(function(b) { b.classList.remove('active'); });
-    // Show selected tab
-    document.getElementById(tabId).classList.add('active');
-    btn.classList.add('active');
+function syncLeadersGrid() {
+    var grid = document.querySelector('.leaders-grid');
+    if (!grid) return;
+    grid.innerHTML = adminLeaders.map(function(l) {
+        var photoHtml = '';
+        if (l.photo) {
+            photoHtml = '<img src="' + l.photo + '" alt="' + l.name + '">';
+        } else {
+            photoHtml = '<i class="fas ' + (l.icon || 'fa-user') + '"></i>';
+        }
+        return '<div class="leader-card">' +
+            '<div class="leader-photo">' + photoHtml + '</div>' +
+            '<h3>' + l.name + '</h3>' +
+            '<p class="leader-role">' + l.role + '</p>' +
+            '<p class="leader-desc">' + l.description + '</p>' +
+        '</div>';
+    }).join('');
 }
 
-// ========================
-// ACTIVITIES TAB (re-uses the main activities array)
-// ========================
-function renderAdminActivities() {
-    var list = document.getElementById('adm-activities-list');
-    if (activities.length === 0) {
-        list.innerHTML = '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No activities yet.</p>';
+function syncEventsGrid() {
+    var grid = document.getElementById('events-grid');
+    if (!grid) return;
+    if (adminEvents.length === 0) {
+        grid.innerHTML = '<p class="empty-message"><i class="fas fa-info-circle"></i> No events scheduled.</p>';
         return;
     }
-    list.innerHTML = activities.map(function(a, i) {
-        return '<div class="admin-list-item">' +
-            '<div class="admin-item-info"><strong>' + a.name + '</strong><span>' + formatDate(a.date) + ' &mdash; ' + a.description + '</span></div>' +
-            '<div class="admin-item-actions">' +
-            '<button class="btn btn-sm btn-delete" onclick="adminDeleteActivity(' + i + ')"><i class="fas fa-trash-alt"></i></button>' +
-            '</div></div>';
+    grid.innerHTML = adminEvents.map(function(e) {
+        var imgHtml = '';
+        if (e.image) {
+            imgHtml = '<img src="' + e.image + '" alt="' + e.name + '" class="event-card-image">';
+        } else {
+            imgHtml = '<div class="event-card-placeholder"><i class="fas fa-calendar-alt"></i></div>';
+        }
+        return '<div class="event-card">' +
+            '<div class="event-card-img-wrap">' + imgHtml + '</div>' +
+            '<div class="event-card-content">' +
+                '<h4 class="event-card-title">' + e.name + '</h4>' +
+                '<p class="event-card-date"><i class="fas fa-calendar"></i> ' + e.date + '</p>' +
+                '<p class="event-card-venue"><i class="fas fa-map-marker-alt"></i> ' + e.venue + '</p>' +
+            '</div>' +
+        '</div>';
     }).join('');
-}
-
-function adminAddActivity() {
-    var name = document.getElementById('adm-act-name').value.trim();
-    var date = document.getElementById('adm-act-date').value;
-    var desc = document.getElementById('adm-act-desc').value.trim();
-    if (!name || !date || !desc) { showToast('Fill all activity fields.', 'error'); return; }
-    activities.push({ name: name, date: date, description: desc });
-    renderActivities();          // update main page
-    renderAdminActivities();     // update admin list
-    document.getElementById('adm-act-name').value = '';
-    document.getElementById('adm-act-date').value = '';
-    document.getElementById('adm-act-desc').value = '';
-    showToast('Activity added!', 'success');
-}
-
-function adminDeleteActivity(i) {
-    if (!confirm('Delete "' + activities[i].name + '"?')) return;
-    activities.splice(i, 1);
-    renderActivities();
-    renderAdminActivities();
-    showToast('Activity deleted.', 'success');
-}
-
-// ========================
-// EVENTS TAB
-// ========================
-function renderAdminEvents() {
-    var list = document.getElementById('adm-events-list');
-    list.innerHTML = adminEvents.map(function(e, i) {
-        return '<div class="admin-list-item">' +
-            '<div class="admin-item-info"><strong>' + e.name + '</strong><span>' + e.date + ' &mdash; ' + e.venue + '</span></div>' +
-            '<div class="admin-item-actions">' +
-            '<button class="btn btn-sm btn-delete" onclick="adminDeleteEvent(' + i + ')"><i class="fas fa-trash-alt"></i></button>' +
-            '</div></div>';
-    }).join('') || '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No events.</p>';
-}
-
-function adminAddEvent() {
-    var name  = document.getElementById('adm-evt-name').value.trim();
-    var date  = document.getElementById('adm-evt-date').value.trim();
-    var venue = document.getElementById('adm-evt-venue').value.trim();
-    if (!name || !date || !venue) { showToast('Fill all event fields.', 'error'); return; }
-    adminEvents.push({ name: name, date: date, venue: venue });
-    renderAdminEvents();
-    syncEventsTable();
-    document.getElementById('adm-evt-name').value  = '';
-    document.getElementById('adm-evt-date').value  = '';
-    document.getElementById('adm-evt-venue').value = '';
-    showToast('Event added!', 'success');
-}
-
-function adminDeleteEvent(i) {
-    if (!confirm('Delete "' + adminEvents[i].name + '"?')) return;
-    adminEvents.splice(i, 1);
-    renderAdminEvents();
-    syncEventsTable();
-    showToast('Event deleted.', 'success');
-}
-
-function syncEventsTable() {
-    var tbody = document.querySelector('#events-table tbody');
-    if (!tbody) return;
-    tbody.innerHTML = adminEvents.map(function(e) {
-        return '<tr><td>' + e.name + '</td><td>' + e.date + '</td><td>' + e.venue + '</td></tr>';
-    }).join('');
-}
-
-// ========================
-// ANNOUNCEMENTS TAB
-// ========================
-function renderAdminAnnouncements() {
-    var list = document.getElementById('adm-announcements-list');
-    list.innerHTML = adminAnnouncements.map(function(a, i) {
-        return '<div class="admin-list-item">' +
-            '<div class="admin-item-info"><strong>' + a.title + '</strong><span>' + a.body + '</span></div>' +
-            '<div class="admin-item-actions">' +
-            '<button class="btn btn-sm btn-delete" onclick="adminDeleteAnnouncement(' + i + ')"><i class="fas fa-trash-alt"></i></button>' +
-            '</div></div>';
-    }).join('') || '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No announcements.</p>';
-}
-
-function adminAddAnnouncement() {
-    var title = document.getElementById('adm-ann-title').value.trim();
-    var body  = document.getElementById('adm-ann-body').value.trim();
-    if (!title || !body) { showToast('Fill both announcement fields.', 'error'); return; }
-    adminAnnouncements.push({ title: title, body: body });
-    renderAdminAnnouncements();
-    syncAnnouncementsList();
-    document.getElementById('adm-ann-title').value = '';
-    document.getElementById('adm-ann-body').value  = '';
-    showToast('Announcement added!', 'success');
-}
-
-function adminDeleteAnnouncement(i) {
-    if (!confirm('Delete announcement "' + adminAnnouncements[i].title + '"?')) return;
-    adminAnnouncements.splice(i, 1);
-    renderAdminAnnouncements();
-    syncAnnouncementsList();
-    showToast('Announcement deleted.', 'success');
 }
 
 function syncAnnouncementsList() {
@@ -590,75 +272,654 @@ function syncAnnouncementsList() {
     }).join('');
 }
 
-// ========================
-// LEADERS TAB
-// ========================
+function syncGalleryGrid() {
+    var grid = document.getElementById('gallery-grid');
+    if (!grid) return;
+    if (adminGallery.length === 0) {
+        grid.innerHTML = '<p class="empty-message" id="gallery-empty-msg"><i class="fas fa-info-circle"></i> No gallery images yet. Add some from the admin panel!</p>';
+        return;
+    }
+    grid.innerHTML = adminGallery.map(function(g) {
+        return '<div class="gallery-item">' +
+            '<img src="' + g.image + '" alt="' + (g.title || 'Gallery image') + '">' +
+            '<div class="gallery-item-caption">' + (g.title || '') + '</div>' +
+        '</div>';
+    }).join('');
+}
+
+function syncActivities() {
+    var list = document.getElementById('activities-list');
+    if (!list) return;
+    if (activities.length === 0) {
+        list.innerHTML = '<p class="empty-message"><i class="fas fa-info-circle"></i> No activities added yet.</p>';
+        return;
+    }
+    list.innerHTML = activities.map(function(a) {
+        return '<div class="activity-item">' +
+            '<div class="activity-info">' +
+                '<h4><i class="fas fa-clipboard-list" style="color: #F4C430; margin-right: 8px;"></i>' + a.name + '</h4>' +
+                '<p class="activity-date"><i class="fas fa-calendar-day"></i> ' + formatDate(a.date) + '</p>' +
+                '<p class="activity-description">' + a.description + '</p>' +
+            '</div>' +
+        '</div>';
+    }).join('');
+}
+
+// ============================================================
+// LOAD ALL DATA FROM BACKEND
+// ============================================================
+async function loadAllData() {
+    try {
+        siteInfo = await apiGet('site-info.php');
+    } catch(e) { console.error('site-info', e); }
+    try {
+        adminLeaders = await apiGet('leaders.php');
+    } catch(e) { console.error('leaders', e); }
+    try {
+        adminEvents = await apiGet('events.php');
+    } catch(e) { console.error('events', e); }
+    try {
+        adminAnnouncements = await apiGet('announcements.php');
+    } catch(e) { console.error('announcements', e); }
+    try {
+        activities = await apiGet('activities.php');
+    } catch(e) { console.error('activities', e); }
+    try {
+        adminGallery = await apiGet('gallery.php');
+    } catch(e) { console.error('gallery', e); }
+    syncAll();
+}
+
+// ============================================================
+// ADMIN PANEL
+// ============================================================
+function openAdminLogin() {
+    if (adminLoggedIn) { openAdminPanel(); return; }
+    document.getElementById('admin-login-modal').style.display = 'flex';
+    document.getElementById('admin-login-error').style.display = 'none';
+    document.getElementById('admin-username').value = '';
+    document.getElementById('admin-password').value = '';
+    setTimeout(function() { document.getElementById('admin-username').focus(); }, 100);
+}
+function closeAdminLogin() { document.getElementById('admin-login-modal').style.display = 'none'; }
+
+async function doAdminLogin() {
+    var user = document.getElementById('admin-username').value.trim();
+    var pass = document.getElementById('admin-password').value;
+    try {
+        var res = await apiPost('auth.php', { username: user, password: pass });
+        if (res.success && res.token) {
+            adminToken = res.token;
+            adminLoggedIn = true;
+            closeAdminLogin();
+            openAdminPanel();
+            var btn = document.getElementById('admin-nav-btn');
+            if (btn) { btn.innerHTML = '<i class="fas fa-unlock"></i> Admin'; }
+            showToast('Logged in successfully!', 'success');
+        } else {
+            document.getElementById('admin-login-error').style.display = 'block';
+        }
+    } catch(e) {
+        document.getElementById('admin-login-error').style.display = 'block';
+    }
+}
+
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && document.getElementById('admin-login-modal').style.display === 'flex') { doAdminLogin(); }
+});
+
+function adminLogout() {
+    adminLoggedIn = false;
+    adminToken = '';
+    closeAdminPanel();
+    var btn = document.getElementById('admin-nav-btn');
+    if (btn) { btn.innerHTML = '<i class="fas fa-lock"></i> Admin'; }
+    showToast('Logged out of admin panel.', 'success');
+}
+
+async function openAdminPanel() {
+    document.getElementById('admin-panel-modal').style.display = 'flex';
+    document.getElementById('adm-site-title').value = siteInfo.title || '';
+    document.getElementById('adm-site-tagline').value = siteInfo.tagline || '';
+    document.getElementById('adm-site-welcome').value = siteInfo.welcome || '';
+    document.getElementById('adm-site-logo').value = siteInfo.logo || '';
+    var missionArr = Array.isArray(siteInfo.mission) ? siteInfo.mission : (siteInfo.mission || '').split('\n');
+    document.getElementById('adm-site-mission').value = missionArr.join('\n');
+    document.getElementById('adm-site-footer').value = siteInfo.footer || '';
+    renderAdminActivities();
+    renderAdminEvents();
+    renderAdminAnnouncements();
+    renderAdminLeaders();
+    renderAdminGallery();
+}
+function closeAdminPanel() { document.getElementById('admin-panel-modal').style.display = 'none'; }
+
+function switchAdminTab(tabId, btn) {
+    document.querySelectorAll('.admin-tab-content').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.admin-tab').forEach(function(b) { b.classList.remove('active'); });
+    document.getElementById(tabId).classList.add('active');
+    btn.classList.add('active');
+}
+
+// ============================================================
+// ADMIN: ACTIVITIES
+// ============================================================
+function renderAdminActivities() {
+    var list = document.getElementById('adm-activities-list');
+    if (activities.length === 0) { list.innerHTML = '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No activities yet.</p>'; return; }
+    list.innerHTML = activities.map(function(a, i) {
+        return '<div class="admin-list-item">' +
+            '<div class="admin-item-info"><strong>' + a.name + '</strong><span>' + formatDate(a.date) + ' &mdash; ' + a.description + '</span></div>' +
+            '<div class="admin-item-actions">' +
+            '<button class="btn btn-sm btn-edit" onclick="adminEditActivity(' + a.id + ')" title="Edit"><i class="fas fa-edit"></i></button>' +
+            '<button class="btn btn-sm btn-delete" onclick="adminDeleteActivity(' + a.id + ')" title="Delete"><i class="fas fa-trash-alt"></i></button>' +
+            '</div></div>';
+    }).join('');
+}
+
+async function adminAddActivity() {
+    var name = document.getElementById('adm-act-name').value.trim();
+    var date = document.getElementById('adm-act-date').value;
+    var desc = document.getElementById('adm-act-desc').value.trim();
+    if (!name || !date || !desc) { showToast('Fill all activity fields.', 'error'); return; }
+    try {
+        await apiPost('activities.php', { name: name, date: date, description: desc });
+        activities = await apiGet('activities.php');
+        syncActivities(); renderAdminActivities();
+        clearActivityForm();
+        showToast('Activity added!', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function adminEditActivity(id) {
+    var a = activities.find(function(x) { return x.id == id; });
+    if (!a) return;
+    editingActivityIndex = id;
+    document.getElementById('adm-act-name').value = a.name;
+    document.getElementById('adm-act-date').value = a.date;
+    document.getElementById('adm-act-desc').value = a.description;
+    document.getElementById('adm-act-btn').style.display = 'none';
+    document.getElementById('adm-act-update-btn').style.display = 'inline-flex';
+    document.getElementById('adm-act-cancel-btn').style.display = 'inline-flex';
+}
+
+async function adminUpdateActivity() {
+    if (editingActivityIndex < 0) return;
+    var name = document.getElementById('adm-act-name').value.trim();
+    var date = document.getElementById('adm-act-date').value;
+    var desc = document.getElementById('adm-act-desc').value.trim();
+    if (!name || !date || !desc) { showToast('Fill all activity fields.', 'error'); return; }
+    try {
+        await apiPut('activities.php', { id: editingActivityIndex, name: name, date: date, description: desc });
+        activities = await apiGet('activities.php');
+        adminCancelActivity();
+        syncActivities(); renderAdminActivities();
+        showToast('Activity updated!', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function adminCancelActivity() {
+    editingActivityIndex = -1;
+    clearActivityForm();
+    document.getElementById('adm-act-btn').style.display = 'inline-flex';
+    document.getElementById('adm-act-update-btn').style.display = 'none';
+    document.getElementById('adm-act-cancel-btn').style.display = 'none';
+}
+
+function clearActivityForm() {
+    document.getElementById('adm-act-name').value = '';
+    document.getElementById('adm-act-date').value = '';
+    document.getElementById('adm-act-desc').value = '';
+}
+
+async function adminDeleteActivity(id) {
+    if (!confirm('Delete this activity?')) return;
+    try {
+        await apiDelete('activities.php', { id: id });
+        activities = await apiGet('activities.php');
+        syncActivities(); renderAdminActivities();
+        showToast('Activity deleted.', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ============================================================
+// ADMIN: EVENTS
+// ============================================================
+function renderAdminEvents() {
+    var list = document.getElementById('adm-events-list');
+    list.innerHTML = adminEvents.map(function(e) {
+        var imgTag = e.image ? '<i class="fas fa-image" style="color:#005B96;margin-right:4px;"></i>' : '';
+        return '<div class="admin-list-item">' +
+            '<div class="admin-item-info">' + imgTag + '<strong>' + e.name + '</strong><span>' + e.date + ' &mdash; ' + e.venue + '</span></div>' +
+            '<div class="admin-item-actions">' +
+            '<button class="btn btn-sm btn-edit" onclick="adminEditEvent(' + e.id + ')" title="Edit"><i class="fas fa-edit"></i></button>' +
+            '<button class="btn btn-sm btn-delete" onclick="adminDeleteEvent(' + e.id + ')" title="Delete"><i class="fas fa-trash-alt"></i></button>' +
+            '</div></div>';
+    }).join('') || '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No events.</p>';
+}
+
+async function previewAdminEventImage(input) {
+    if (input.files && input.files[0]) {
+        try {
+            var res = await apiUpload(input.files[0]);
+            if (res.success) {
+                tempEventImage = res.url;
+                var preview = document.getElementById('adm-evt-preview');
+                preview.src = tempEventImage;
+                preview.style.display = 'block';
+            }
+        } catch(e) { showToast('Upload failed: ' + e.message, 'error'); }
+    }
+}
+
+async function adminAddEvent() {
+    var name = document.getElementById('adm-evt-name').value.trim();
+    var date = document.getElementById('adm-evt-date').value.trim();
+    var venue = document.getElementById('adm-evt-venue').value.trim();
+    if (!name || !date || !venue) { showToast('Fill all event fields.', 'error'); return; }
+    try {
+        await apiPost('events.php', { name: name, date: date, venue: venue, image: tempEventImage });
+        adminEvents = await apiGet('events.php');
+        syncEventsGrid(); renderAdminEvents();
+        clearEventForm();
+        showToast('Event added!', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function adminEditEvent(id) {
+    var e = adminEvents.find(function(x) { return x.id == id; });
+    if (!e) return;
+    editingEventIndex = id;
+    document.getElementById('adm-evt-name').value = e.name;
+    document.getElementById('adm-evt-date').value = e.date;
+    document.getElementById('adm-evt-venue').value = e.venue;
+    tempEventImage = e.image;
+    var preview = document.getElementById('adm-evt-preview');
+    if (e.image) { preview.src = e.image; preview.style.display = 'block'; }
+    else { preview.src = ''; preview.style.display = 'none'; }
+    document.getElementById('adm-evt-btn').style.display = 'none';
+    document.getElementById('adm-evt-update-btn').style.display = 'inline-flex';
+    document.getElementById('adm-evt-cancel-btn').style.display = 'inline-flex';
+}
+
+async function adminUpdateEvent() {
+    if (editingEventIndex < 0) return;
+    var name = document.getElementById('adm-evt-name').value.trim();
+    var date = document.getElementById('adm-evt-date').value.trim();
+    var venue = document.getElementById('adm-evt-venue').value.trim();
+    if (!name || !date || !venue) { showToast('Fill all event fields.', 'error'); return; }
+    try {
+        await apiPut('events.php', { id: editingEventIndex, name: name, date: date, venue: venue, image: tempEventImage });
+        adminEvents = await apiGet('events.php');
+        adminCancelEvent();
+        syncEventsGrid(); renderAdminEvents();
+        showToast('Event updated!', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function adminCancelEvent() {
+    editingEventIndex = -1;
+    clearEventForm();
+    document.getElementById('adm-evt-btn').style.display = 'inline-flex';
+    document.getElementById('adm-evt-update-btn').style.display = 'none';
+    document.getElementById('adm-evt-cancel-btn').style.display = 'none';
+}
+
+function clearEventForm() {
+    document.getElementById('adm-evt-name').value = '';
+    document.getElementById('adm-evt-date').value = '';
+    document.getElementById('adm-evt-venue').value = '';
+    document.getElementById('adm-evt-image').value = '';
+    document.getElementById('adm-evt-preview').src = '';
+    document.getElementById('adm-evt-preview').style.display = 'none';
+    tempEventImage = null;
+}
+
+async function adminDeleteEvent(id) {
+    if (!confirm('Delete this event?')) return;
+    try {
+        await apiDelete('events.php', { id: id });
+        adminEvents = await apiGet('events.php');
+        syncEventsGrid(); renderAdminEvents();
+        showToast('Event deleted.', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ============================================================
+// ADMIN: ANNOUNCEMENTS
+// ============================================================
+function renderAdminAnnouncements() {
+    var list = document.getElementById('adm-announcements-list');
+    list.innerHTML = adminAnnouncements.map(function(a) {
+        return '<div class="admin-list-item">' +
+            '<div class="admin-item-info"><strong>' + a.title + '</strong><span>' + a.body + '</span></div>' +
+            '<div class="admin-item-actions">' +
+            '<button class="btn btn-sm btn-edit" onclick="adminEditAnnouncement(' + a.id + ')" title="Edit"><i class="fas fa-edit"></i></button>' +
+            '<button class="btn btn-sm btn-delete" onclick="adminDeleteAnnouncement(' + a.id + ')" title="Delete"><i class="fas fa-trash-alt"></i></button>' +
+            '</div></div>';
+    }).join('') || '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No announcements.</p>';
+}
+
+async function adminAddAnnouncement() {
+    var title = document.getElementById('adm-ann-title').value.trim();
+    var body = document.getElementById('adm-ann-body').value.trim();
+    if (!title || !body) { showToast('Fill both announcement fields.', 'error'); return; }
+    try {
+        await apiPost('announcements.php', { title: title, body: body });
+        adminAnnouncements = await apiGet('announcements.php');
+        syncAnnouncementsList(); renderAdminAnnouncements();
+        clearAnnouncementForm();
+        showToast('Announcement added!', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function adminEditAnnouncement(id) {
+    var a = adminAnnouncements.find(function(x) { return x.id == id; });
+    if (!a) return;
+    editingAnnouncementIndex = id;
+    document.getElementById('adm-ann-title').value = a.title;
+    document.getElementById('adm-ann-body').value = a.body;
+    document.getElementById('adm-ann-btn').style.display = 'none';
+    document.getElementById('adm-ann-update-btn').style.display = 'inline-flex';
+    document.getElementById('adm-ann-cancel-btn').style.display = 'inline-flex';
+}
+
+async function adminUpdateAnnouncement() {
+    if (editingAnnouncementIndex < 0) return;
+    var title = document.getElementById('adm-ann-title').value.trim();
+    var body = document.getElementById('adm-ann-body').value.trim();
+    if (!title || !body) { showToast('Fill both announcement fields.', 'error'); return; }
+    try {
+        await apiPut('announcements.php', { id: editingAnnouncementIndex, title: title, body: body });
+        adminAnnouncements = await apiGet('announcements.php');
+        adminCancelAnnouncement();
+        syncAnnouncementsList(); renderAdminAnnouncements();
+        showToast('Announcement updated!', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function adminCancelAnnouncement() {
+    editingAnnouncementIndex = -1;
+    clearAnnouncementForm();
+    document.getElementById('adm-ann-btn').style.display = 'inline-flex';
+    document.getElementById('adm-ann-update-btn').style.display = 'none';
+    document.getElementById('adm-ann-cancel-btn').style.display = 'none';
+}
+
+function clearAnnouncementForm() {
+    document.getElementById('adm-ann-title').value = '';
+    document.getElementById('adm-ann-body').value = '';
+}
+
+async function adminDeleteAnnouncement(id) {
+    if (!confirm('Delete this announcement?')) return;
+    try {
+        await apiDelete('announcements.php', { id: id });
+        adminAnnouncements = await apiGet('announcements.php');
+        syncAnnouncementsList(); renderAdminAnnouncements();
+        showToast('Announcement deleted.', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ============================================================
+// ADMIN: LEADERS
+// ============================================================
 function renderAdminLeaders() {
     var list = document.getElementById('adm-leaders-list');
-    list.innerHTML = adminLeaders.map(function(l, i) {
+    list.innerHTML = adminLeaders.map(function(l) {
+        var photoTag = l.photo ? '<i class="fas fa-camera" style="color:#005B96;margin-right:4px;"></i>' : '';
         return '<div class="admin-list-item">' +
-            '<div class="admin-item-info"><strong>' + l.name + ' &mdash; ' + l.role + '</strong><span>' + l.desc + '</span></div>' +
+            '<div class="admin-item-info">' + photoTag + '<strong>' + l.name + ' &mdash; ' + l.role + '</strong><span>' + l.description + '</span></div>' +
             '<div class="admin-item-actions">' +
-            '<button class="btn btn-sm btn-delete" onclick="adminDeleteLeader(' + i + ')"><i class="fas fa-trash-alt"></i></button>' +
+            '<button class="btn btn-sm btn-edit" onclick="adminEditLeader(' + l.id + ')" title="Edit"><i class="fas fa-edit"></i></button>' +
+            '<button class="btn btn-sm btn-delete" onclick="adminDeleteLeader(' + l.id + ')" title="Delete"><i class="fas fa-trash-alt"></i></button>' +
             '</div></div>';
     }).join('') || '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No leaders.</p>';
 }
 
-function adminAddLeader() {
+async function previewAdminLeaderPhoto(input) {
+    if (input.files && input.files[0]) {
+        try {
+            var res = await apiUpload(input.files[0]);
+            if (res.success) {
+                tempLeaderPhoto = res.url;
+                var preview = document.getElementById('adm-ldr-preview');
+                preview.src = tempLeaderPhoto;
+                preview.style.display = 'block';
+            }
+        } catch(e) { showToast('Upload failed: ' + e.message, 'error'); }
+    }
+}
+
+async function adminAddLeader() {
     var name = document.getElementById('adm-ldr-name').value.trim();
     var role = document.getElementById('adm-ldr-role').value.trim();
     var desc = document.getElementById('adm-ldr-desc').value.trim();
     var icon = document.getElementById('adm-ldr-icon').value.trim() || 'fa-user';
     if (!name || !role || !desc) { showToast('Fill name, role, and description.', 'error'); return; }
-    adminLeaders.push({ name: name, role: role, desc: desc, icon: icon });
-    renderAdminLeaders();
-    syncLeadersGrid();
+    try {
+        await apiPost('leaders.php', { name: name, role: role, description: desc, icon: icon, photo: tempLeaderPhoto });
+        adminLeaders = await apiGet('leaders.php');
+        syncLeadersGrid(); renderAdminLeaders();
+        clearLeaderForm();
+        showToast('Leader added!', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function adminEditLeader(id) {
+    var l = adminLeaders.find(function(x) { return x.id == id; });
+    if (!l) return;
+    editingLeaderIndex = id;
+    document.getElementById('adm-ldr-name').value = l.name;
+    document.getElementById('adm-ldr-role').value = l.role;
+    document.getElementById('adm-ldr-desc').value = l.description;
+    document.getElementById('adm-ldr-icon').value = l.icon || 'fa-user';
+    tempLeaderPhoto = l.photo;
+    var preview = document.getElementById('adm-ldr-preview');
+    if (l.photo) { preview.src = l.photo; preview.style.display = 'block'; }
+    else { preview.src = ''; preview.style.display = 'none'; }
+    document.getElementById('adm-ldr-btn').style.display = 'none';
+    document.getElementById('adm-ldr-update-btn').style.display = 'inline-flex';
+    document.getElementById('adm-ldr-cancel-btn').style.display = 'inline-flex';
+}
+
+async function adminUpdateLeader() {
+    if (editingLeaderIndex < 0) return;
+    var name = document.getElementById('adm-ldr-name').value.trim();
+    var role = document.getElementById('adm-ldr-role').value.trim();
+    var desc = document.getElementById('adm-ldr-desc').value.trim();
+    var icon = document.getElementById('adm-ldr-icon').value.trim() || 'fa-user';
+    if (!name || !role || !desc) { showToast('Fill name, role, and description.', 'error'); return; }
+    try {
+        await apiPut('leaders.php', { id: editingLeaderIndex, name: name, role: role, description: desc, icon: icon, photo: tempLeaderPhoto });
+        adminLeaders = await apiGet('leaders.php');
+        adminCancelLeader();
+        syncLeadersGrid(); renderAdminLeaders();
+        showToast('Leader updated!', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function adminCancelLeader() {
+    editingLeaderIndex = -1;
+    clearLeaderForm();
+    document.getElementById('adm-ldr-btn').style.display = 'inline-flex';
+    document.getElementById('adm-ldr-update-btn').style.display = 'none';
+    document.getElementById('adm-ldr-cancel-btn').style.display = 'none';
+}
+
+function clearLeaderForm() {
     document.getElementById('adm-ldr-name').value = '';
     document.getElementById('adm-ldr-role').value = '';
     document.getElementById('adm-ldr-desc').value = '';
     document.getElementById('adm-ldr-icon').value = '';
-    showToast('Leader added!', 'success');
+    document.getElementById('adm-ldr-photo').value = '';
+    document.getElementById('adm-ldr-preview').src = '';
+    document.getElementById('adm-ldr-preview').style.display = 'none';
+    tempLeaderPhoto = null;
 }
 
-function adminDeleteLeader(i) {
-    if (!confirm('Remove "' + adminLeaders[i].name + '" from leaders?')) return;
-    adminLeaders.splice(i, 1);
-    renderAdminLeaders();
-    syncLeadersGrid();
-    showToast('Leader removed.', 'success');
+async function adminDeleteLeader(id) {
+    if (!confirm('Remove this leader?')) return;
+    try {
+        await apiDelete('leaders.php', { id: id });
+        adminLeaders = await apiGet('leaders.php');
+        syncLeadersGrid(); renderAdminLeaders();
+        showToast('Leader removed.', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
-function syncLeadersGrid() {
-    var grid = document.querySelector('.leaders-grid');
-    if (!grid) return;
-    grid.innerHTML = adminLeaders.map(function(l) {
-        return '<div class="leader-card">' +
-            '<div class="leader-icon"><i class="fas ' + l.icon + '"></i></div>' +
-            '<h3>' + l.name + '</h3>' +
-            '<p class="leader-role">' + l.role + '</p>' +
-            '<p class="leader-desc">' + l.desc + '</p>' +
-            '</div>';
+// ============================================================
+// ADMIN: GALLERY
+// ============================================================
+function renderAdminGallery() {
+    var list = document.getElementById('adm-gallery-list');
+    if (adminGallery.length === 0) { list.innerHTML = '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No gallery images yet.</p>'; return; }
+    list.innerHTML = adminGallery.map(function(g) {
+        return '<div class="admin-list-item">' +
+            '<div class="admin-item-info"><i class="fas fa-image" style="color:#005B96;margin-right:4px;"></i><strong>' + (g.title || 'Untitled') + '</strong></div>' +
+            '<div class="admin-item-actions">' +
+            '<button class="btn btn-sm btn-edit" onclick="adminEditGallery(' + g.id + ')" title="Edit"><i class="fas fa-edit"></i></button>' +
+            '<button class="btn btn-sm btn-delete" onclick="adminDeleteGallery(' + g.id + ')" title="Delete"><i class="fas fa-trash-alt"></i></button>' +
+            '</div></div>';
     }).join('');
 }
 
-// ========================
-// SITE INFO TAB
-// ========================
-function adminSaveSiteInfo() {
-    var title    = document.getElementById('adm-site-title').value.trim();
-    var tagline  = document.getElementById('adm-site-tagline').value.trim();
-    var welcome  = document.getElementById('adm-site-welcome').value.trim();
-    var logoSrc  = document.getElementById('adm-site-logo').value.trim();
-
-    if (title)   { document.querySelector('.logo h1').textContent = title; document.title = title + ' Portal'; }
-    if (tagline) { document.querySelector('.tagline').textContent = tagline; }
-    if (welcome) {
-        var wm = document.querySelector('.welcome-message');
-        if (wm) { wm.innerHTML = '<i class="fas fa-star accent-icon"></i> ' + welcome; }
+async function previewAdminGalleryImage(input) {
+    if (input.files && input.files[0]) {
+        try {
+            var res = await apiUpload(input.files[0]);
+            if (res.success) {
+                tempGalleryImage = res.url;
+                var preview = document.getElementById('adm-gal-preview');
+                preview.src = tempGalleryImage;
+                preview.style.display = 'block';
+            }
+        } catch(e) { showToast('Upload failed: ' + e.message, 'error'); }
     }
-    if (logoSrc) {
-        var logoImg = document.querySelector('.logo img');
-        if (logoImg) { logoImg.setAttribute('src', logoSrc); }
-    }
-    showToast('Site info updated!', 'success');
 }
+
+async function adminAddGallery() {
+    var title = document.getElementById('adm-gal-title').value.trim();
+    if (!tempGalleryImage) { showToast('Select an image file first.', 'error'); return; }
+    try {
+        await apiPost('gallery.php', { title: title, image: tempGalleryImage });
+        adminGallery = await apiGet('gallery.php');
+        syncGalleryGrid(); renderAdminGallery();
+        clearGalleryForm();
+        showToast('Gallery image added!', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function adminEditGallery(id) {
+    var g = adminGallery.find(function(x) { return x.id == id; });
+    if (!g) return;
+    editingGalleryIndex = id;
+    document.getElementById('adm-gal-title').value = g.title || '';
+    tempGalleryImage = g.image;
+    var preview = document.getElementById('adm-gal-preview');
+    if (g.image) { preview.src = g.image; preview.style.display = 'block'; }
+    else { preview.src = ''; preview.style.display = 'none'; }
+    document.getElementById('adm-gal-btn').style.display = 'none';
+    document.getElementById('adm-gal-update-btn').style.display = 'inline-flex';
+    document.getElementById('adm-gal-cancel-btn').style.display = 'inline-flex';
+}
+
+async function adminUpdateGallery() {
+    if (editingGalleryIndex < 0) return;
+    var title = document.getElementById('adm-gal-title').value.trim();
+    if (!tempGalleryImage) { showToast('Select an image file.', 'error'); return; }
+    try {
+        await apiPut('gallery.php', { id: editingGalleryIndex, title: title, image: tempGalleryImage });
+        adminGallery = await apiGet('gallery.php');
+        adminCancelGallery();
+        syncGalleryGrid(); renderAdminGallery();
+        showToast('Gallery image updated!', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+function adminCancelGallery() {
+    editingGalleryIndex = -1;
+    clearGalleryForm();
+    document.getElementById('adm-gal-btn').style.display = 'inline-flex';
+    document.getElementById('adm-gal-update-btn').style.display = 'none';
+    document.getElementById('adm-gal-cancel-btn').style.display = 'none';
+}
+
+function clearGalleryForm() {
+    document.getElementById('adm-gal-title').value = '';
+    document.getElementById('adm-gal-file').value = '';
+    document.getElementById('adm-gal-preview').src = '';
+    document.getElementById('adm-gal-preview').style.display = 'none';
+    tempGalleryImage = null;
+}
+
+async function adminDeleteGallery(id) {
+    if (!confirm('Delete this gallery image?')) return;
+    try {
+        await apiDelete('gallery.php', { id: id });
+        adminGallery = await apiGet('gallery.php');
+        syncGalleryGrid(); renderAdminGallery();
+        showToast('Gallery image deleted.', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+// ============================================================
+// ADMIN: SITE INFO + RESET
+// ============================================================
+async function previewAdminLogo(input) {
+    if (input.files && input.files[0]) {
+        try {
+            var res = await apiUpload(input.files[0]);
+            if (res.success) {
+                tempLogoImage = res.url;
+                var preview = document.getElementById('adm-logo-preview');
+                preview.src = tempLogoImage;
+                preview.style.display = 'block';
+            }
+        } catch(e) { showToast('Upload failed: ' + e.message, 'error'); }
+    }
+}
+
+async function adminSaveSiteInfo() {
+    var title = document.getElementById('adm-site-title').value.trim();
+    var tagline = document.getElementById('adm-site-tagline').value.trim();
+    var welcome = document.getElementById('adm-site-welcome').value.trim();
+    var logoPath = document.getElementById('adm-site-logo').value.trim();
+    var missionText = document.getElementById('adm-site-mission').value.trim();
+    var footer = document.getElementById('adm-site-footer').value.trim();
+    
+    var payload = {};
+    if (title) payload.title = title;
+    if (tagline) payload.tagline = tagline;
+    if (welcome) payload.welcome = welcome;
+    if (logoPath) payload.logo = logoPath;
+    if (tempLogoImage) payload.logo_file = tempLogoImage;
+    if (missionText) payload.mission = missionText.split('\n').map(function(s) { return s.trim(); }).filter(function(s) { return s; });
+    if (footer) payload.footer = footer;
+    
+    try {
+        await apiPut('site-info.php', payload);
+        siteInfo = await apiGet('site-info.php');
+        syncSiteInfo(); syncMission();
+        showToast('Site info updated!', 'success');
+    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+}
+
+async function adminResetAll() {
+    if (!confirm('WARNING: This will reset ALL content to the original defaults. Continue?')) return;
+    try {
+        await apiPost('reset.php', {});
+        await loadAllData();
+        showToast('All data reset to defaults.', 'success');
+    } catch(e) {
+        showToast('Reset not available. You can run init.php manually.', 'error');
+    }
+}
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+async function init() {
+    await loadAllData();
+}
+init();
