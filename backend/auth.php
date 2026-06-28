@@ -11,7 +11,9 @@ $user = $data['username'] ?? '';
 $pass = $data['password'] ?? '';
 
 if ($user === ADMIN_USER && $pass === ADMIN_PASS) {
-    jsonResponse(['success' => true, 'token' => 'eastc-admin-token']);
+    $token = generateToken();
+    $_SESSION['admin_token'] = $token;
+    jsonResponse(['success' => true, 'token' => $token]);
 } else {
     jsonResponse(['error' => 'Invalid credentials'], 401);
 }

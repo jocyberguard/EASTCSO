@@ -12,10 +12,17 @@ if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
 }
 
 $file = $_FILES['image'];
-$allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+$allowedMimeTypes = [
+    'image/jpeg' => 'jpg',
+    'image/pjpeg' => 'jpg',
+    'image/png'  => 'png',
+    'image/x-png' => 'png',
+    'image/gif'  => 'gif',
+    'image/webp' => 'webp'
+];
 $maxSize = 2 * 1024 * 1024; // 2MB
 
-if (!in_array($file['type'], $allowedTypes)) {
+if (!array_key_exists($file['type'], $allowedMimeTypes)) {
     jsonResponse(['error' => 'Invalid file type. Only JPG, PNG, GIF, WebP allowed.'], 400);
 }
 
@@ -23,7 +30,7 @@ if ($file['size'] > $maxSize) {
     jsonResponse(['error' => 'File too large. Max 2MB.'], 400);
 }
 
-$ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+$ext = $allowedMimeTypes[$file['type']];
 $filename = 'upload_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
 $uploadPath = 'uploads/' . $filename;
 $fullPath = __DIR__ . '/uploads/' . $filename;

@@ -3,6 +3,11 @@
    EASTC Backend - Database Configuration
    ============================================= */
 
+// Start session securely
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // Database settings - UPDATE THESE for your hosting
 $db_host = 'localhost';
 $db_name = 'eastc_db';
@@ -48,12 +53,32 @@ function jsonResponse($data, $code = 200) {
     exit;
 }
 
-// Helper: authenticate admin via simple token
+// Helper: authenticate admin via session-stored dynamic token
 function requireAdmin() {
-    $headers = getallheaders();
-    $token = $headers['Authorization'] ?? '';
+    $token = '';
+    
+    // Check request headers
+    if (function_exists('getallheaders')) {
+        $headers = getallheaders();
+        if (isset($headers['Authorization'])) {
+            $token = $headers['Authorization'];
+        } elseif (isset($headers['authorization'])) {
+            $token = $headers['authorization'];
+        }
+    }
+    
+    // Fallback for servers not exposing Authorization in headers (e.g. CGI/FastCGI)
+    if (empty($token)) {
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $token = $_SERVER['HTTP_AUTHORIZATION'];
+        } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $token = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+        }
+    }
+
     $token = str_replace('Bearer ', '', $token);
-    if ($token !== 'eastc-admin-token') {
+    
+    if (empty($token) || !isset($_SESSION['admin_token']) || $token !== $_SESSION['admin_token']) {
         jsonResponse(['error' => 'Unauthorized'], 401);
     }
 }
