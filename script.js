@@ -242,6 +242,7 @@ function syncAll() {
     syncAnnouncementsList();
     syncGalleryGrid();
     syncActivities();
+    syncImportantDates();
 }
 
 function syncSiteInfo() {
@@ -357,6 +358,39 @@ function syncActivities() {
                 '<p class="activity-description">' + a.description + '</p>' +
             '</div>' +
         '</div>';
+    }).join('');
+}
+
+function syncImportantDates() {
+    var list = document.getElementById('dates-list');
+    if (!list) return;
+    if (adminEvents.length === 0) {
+        list.innerHTML = '<li><span>No upcoming dates</span></li>';
+        return;
+    }
+    // Format short month names
+    var shortMonths = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    list.innerHTML = adminEvents.map(function(e) {
+        var shortDate = e.date;
+        // Try to parse the date string into a short format like "Jan 20"
+        var parsed = new Date(e.date);
+        if (!isNaN(parsed.getTime())) {
+            shortDate = shortMonths[parsed.getMonth()] + ' ' + parsed.getDate();
+        } else {
+            // If date is text like "January 20, 2026", extract month+day
+            var match = e.date.match(/^(\w+)\s+(\d+)/);
+            if (match) {
+                var monthFull = match[1];
+                var dayNum = match[2];
+                var monthIdx = ['January','February','March','April','May','June','July','August','September','October','November','December'].indexOf(monthFull);
+                if (monthIdx >= 0) {
+                    shortDate = shortMonths[monthIdx] + ' ' + dayNum;
+                } else {
+                    shortDate = monthFull.substring(0, 3) + ' ' + dayNum;
+                }
+            }
+        }
+        return '<li><strong>' + shortDate + '</strong><span>' + e.name + '</span></li>';
     }).join('');
 }
 
@@ -1003,3 +1037,6 @@ async function init() {
     }
     await loadAllData();
 }
+
+// Auto-load data from database when the page starts
+init();
