@@ -34,6 +34,16 @@
         </div>
     </header>
     <!-- ========================
+         BACKEND STATUS BANNER
+         Shows when backend is unreachable
+    ========================= -->
+    <div id="backend-banner" class="backend-banner" style="display:none;">
+        <i class="fas fa-wifi"></i>
+        <span id="backend-banner-msg">Backend not connected. Admin features and data persistence will not work.</span>
+        <button class="backend-banner-close" onclick="document.getElementById('backend-banner').style.display='none';"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- ========================
          NAVIGATION MENU
     ========================= -->
     <nav id="main-nav">
@@ -71,7 +81,8 @@
                 <label><i class="fas fa-key"></i> Password</label>
                 <input type="password" id="admin-password" placeholder="Enter password">
             </div>
-            <p id="admin-login-error" class="admin-error" style="display:none;"><i class="fas fa-exclamation-circle"></i> Invalid credentials. Try again.</p>
+            <p id="admin-login-error" class="admin-error" style="display:none;"></p>
+            <p id="admin-login-network-error" class="admin-error" style="display:none; color: #dc3545; background: #ffe5e5; padding: 10px 14px; border-radius: 8px; font-size: 0.9rem; margin-bottom: 12px; border-left: 3px solid #dc3545;"><i class="fas fa-wifi"></i> <strong>Cannot connect to backend.</strong> Please make sure the PHP server is running. If you opened this file directly (file://), use a web server instead (e.g., XAMPP, or run <code>python -m http.server</code>).</p>
             <button class="btn btn-primary" style="width:100%;" onclick="doAdminLogin()">
                 <i class="fas fa-sign-in-alt"></i> Login
             </button>

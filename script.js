@@ -15,6 +15,7 @@ const API_BASE = 'backend/';
 // Admin auth token (stored in memory, not localStorage for security)
 let adminToken = '';
 let adminLoggedIn = false;
+let backendConnected = false;
 
 // Data caches (fetched from backend)
 let activities = [];
@@ -94,6 +95,60 @@ async function apiUpload(file) {
     });
     if (!res.ok) throw new Error('Upload error: ' + res.status);
     return res.json();
+}
+
+// ============================================================
+// BACKEND CONNECTIVITY & ERROR HELPERS
+// ============================================================
+function isNetworkError(e) {
+    var msg = e.message || '';
+    return msg.includes('Failed to fetch') ||
+           msg.includes('NetworkError') ||
+           msg.includes('fetch') ||
+           msg.includes('Network') ||
+           msg.includes('CORS') ||
+           msg.includes('cors') ||
+           msg.includes('404') ||
+           msg.includes('ENOTFOUND') ||
+           !backendConnected;
+}
+
+async function checkBackendConnection() {
+    try {
+        await fetch(API_BASE + 'ping.php', { method: 'GET', cache: 'no-store' });
+        backendConnected = true;
+        hideBackendBanner();
+        return true;
+    } catch (e) {
+        backendConnected = false;
+        showBackendBanner('Backend not connected. Admin features and data persistence will not work. Make sure the PHP server is running.');
+        return false;
+    }
+}
+
+function showBackendBanner(msg) {
+    var banner = document.getElementById('backend-banner');
+    var bannerMsg = document.getElementById('backend-banner-msg');
+    if (banner && bannerMsg) {
+        bannerMsg.textContent = msg;
+        banner.style.display = 'flex';
+    }
+}
+
+function hideBackendBanner() {
+    var banner = document.getElementById('backend-banner');
+    if (banner) banner.style.display = 'none';
+}
+
+function getBackendErrorMessage(e, context) {
+    var msg = e.message || '';
+    if (isNetworkError(e)) {
+        return context + ': Cannot connect to backend. Check that the PHP server is running.';
+    }
+    if (msg.includes('401')) return context + ': Not authorized. Please log in again.';
+    if (msg.includes('403')) return context + ': Access denied.';
+    if (msg.includes('500')) return context + ': Server error. Check PHP logs.';
+    return context + ': ' + msg;
 }
 
 // ============================================================
@@ -309,25 +364,30 @@ function syncActivities() {
 // LOAD ALL DATA FROM BACKEND
 // ============================================================
 async function loadAllData() {
+    var failed = 0;
     try {
         siteInfo = await apiGet('site-info.php');
-    } catch(e) { console.error('site-info', e); }
+    } catch(e) { failed++; console.error('site-info', e); }
     try {
         adminLeaders = await apiGet('leaders.php');
-    } catch(e) { console.error('leaders', e); }
+    } catch(e) { failed++; console.error('leaders', e); }
     try {
         adminEvents = await apiGet('events.php');
-    } catch(e) { console.error('events', e); }
+    } catch(e) { failed++; console.error('events', e); }
     try {
         adminAnnouncements = await apiGet('announcements.php');
-    } catch(e) { console.error('announcements', e); }
+    } catch(e) { failed++; console.error('announcements', e); }
     try {
         activities = await apiGet('activities.php');
-    } catch(e) { console.error('activities', e); }
+    } catch(e) { failed++; console.error('activities', e); }
     try {
         adminGallery = await apiGet('gallery.php');
-    } catch(e) { console.error('gallery', e); }
+    } catch(e) { failed++; console.error('gallery', e); }
     syncAll();
+    if (failed >= 6) {
+        showBackendBanner('Backend not connected. Data will not load or save. Please run a web server (e.g., XAMPP, or python -m http.server).');
+        showToast('Backend not connected. Page loaded with default content only.', 'error');
+    }
 }
 
 // ============================================================
@@ -337,6 +397,8 @@ function openAdminLogin() {
     if (adminLoggedIn) { openAdminPanel(); return; }
     document.getElementById('admin-login-modal').style.display = 'flex';
     document.getElementById('admin-login-error').style.display = 'none';
+    var netErrDiv = document.getElementById('admin-login-network-error');
+    if (netErrDiv) netErrDiv.style.display = 'none';
     document.getElementById('admin-username').value = '';
     document.getElementById('admin-password').value = '';
     setTimeout(function() { document.getElementById('admin-username').focus(); }, 100);
@@ -346,21 +408,34 @@ function closeAdminLogin() { document.getElementById('admin-login-modal').style.
 async function doAdminLogin() {
     var user = document.getElementById('admin-username').value.trim();
     var pass = document.getElementById('admin-password').value;
+    var errDiv = document.getElementById('admin-login-error');
+    var netErrDiv = document.getElementById('admin-login-network-error');
+    errDiv.style.display = 'none';
+    if (netErrDiv) netErrDiv.style.display = 'none';
     try {
         var res = await apiPost('auth.php', { username: user, password: pass });
         if (res.success && res.token) {
             adminToken = res.token;
             adminLoggedIn = true;
+            backendConnected = true;
+            hideBackendBanner();
             closeAdminLogin();
             openAdminPanel();
             var btn = document.getElementById('admin-nav-btn');
             if (btn) { btn.innerHTML = '<i class="fas fa-unlock"></i> Admin'; }
             showToast('Logged in successfully!', 'success');
         } else {
-            document.getElementById('admin-login-error').style.display = 'block';
+            errDiv.textContent = res.error || 'Invalid credentials. Try again.';
+            errDiv.style.display = 'block';
         }
     } catch(e) {
-        document.getElementById('admin-login-error').style.display = 'block';
+        if (isNetworkError(e)) {
+            if (netErrDiv) netErrDiv.style.display = 'block';
+            else showToast('Cannot connect to backend. Check that the PHP server is running.', 'error');
+        } else {
+            errDiv.textContent = 'Invalid credentials. Try again.';
+            errDiv.style.display = 'block';
+        }
     }
 }
 
@@ -428,7 +503,7 @@ async function adminAddActivity() {
         syncActivities(); renderAdminActivities();
         clearActivityForm();
         showToast('Activity added!', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 function adminEditActivity(id) {
@@ -455,7 +530,7 @@ async function adminUpdateActivity() {
         adminCancelActivity();
         syncActivities(); renderAdminActivities();
         showToast('Activity updated!', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 function adminCancelActivity() {
@@ -479,7 +554,7 @@ async function adminDeleteActivity(id) {
         activities = await apiGet('activities.php');
         syncActivities(); renderAdminActivities();
         showToast('Activity deleted.', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 // ============================================================
@@ -508,7 +583,7 @@ async function previewAdminEventImage(input) {
                 preview.src = tempEventImage;
                 preview.style.display = 'block';
             }
-        } catch(e) { showToast('Upload failed: ' + e.message, 'error'); }
+        } catch(e) { showToast(getBackendErrorMessage(e, 'Upload failed'), 'error'); }
     }
 }
 
@@ -523,7 +598,7 @@ async function adminAddEvent() {
         syncEventsGrid(); renderAdminEvents();
         clearEventForm();
         showToast('Event added!', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 function adminEditEvent(id) {
@@ -554,7 +629,7 @@ async function adminUpdateEvent() {
         adminCancelEvent();
         syncEventsGrid(); renderAdminEvents();
         showToast('Event updated!', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 function adminCancelEvent() {
@@ -582,7 +657,7 @@ async function adminDeleteEvent(id) {
         adminEvents = await apiGet('events.php');
         syncEventsGrid(); renderAdminEvents();
         showToast('Event deleted.', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 // ============================================================
@@ -610,7 +685,7 @@ async function adminAddAnnouncement() {
         syncAnnouncementsList(); renderAdminAnnouncements();
         clearAnnouncementForm();
         showToast('Announcement added!', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 function adminEditAnnouncement(id) {
@@ -635,7 +710,7 @@ async function adminUpdateAnnouncement() {
         adminCancelAnnouncement();
         syncAnnouncementsList(); renderAdminAnnouncements();
         showToast('Announcement updated!', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 function adminCancelAnnouncement() {
@@ -658,7 +733,7 @@ async function adminDeleteAnnouncement(id) {
         adminAnnouncements = await apiGet('announcements.php');
         syncAnnouncementsList(); renderAdminAnnouncements();
         showToast('Announcement deleted.', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 // ============================================================
@@ -687,7 +762,7 @@ async function previewAdminLeaderPhoto(input) {
                 preview.src = tempLeaderPhoto;
                 preview.style.display = 'block';
             }
-        } catch(e) { showToast('Upload failed: ' + e.message, 'error'); }
+        } catch(e) { showToast(getBackendErrorMessage(e, 'Upload failed'), 'error'); }
     }
 }
 
@@ -703,7 +778,7 @@ async function adminAddLeader() {
         syncLeadersGrid(); renderAdminLeaders();
         clearLeaderForm();
         showToast('Leader added!', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 function adminEditLeader(id) {
@@ -736,7 +811,7 @@ async function adminUpdateLeader() {
         adminCancelLeader();
         syncLeadersGrid(); renderAdminLeaders();
         showToast('Leader updated!', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 function adminCancelLeader() {
@@ -765,7 +840,7 @@ async function adminDeleteLeader(id) {
         adminLeaders = await apiGet('leaders.php');
         syncLeadersGrid(); renderAdminLeaders();
         showToast('Leader removed.', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 // ============================================================
@@ -794,7 +869,7 @@ async function previewAdminGalleryImage(input) {
                 preview.src = tempGalleryImage;
                 preview.style.display = 'block';
             }
-        } catch(e) { showToast('Upload failed: ' + e.message, 'error'); }
+        } catch(e) { showToast(getBackendErrorMessage(e, 'Upload failed'), 'error'); }
     }
 }
 
@@ -807,7 +882,7 @@ async function adminAddGallery() {
         syncGalleryGrid(); renderAdminGallery();
         clearGalleryForm();
         showToast('Gallery image added!', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 function adminEditGallery(id) {
@@ -834,7 +909,7 @@ async function adminUpdateGallery() {
         adminCancelGallery();
         syncGalleryGrid(); renderAdminGallery();
         showToast('Gallery image updated!', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 function adminCancelGallery() {
@@ -860,7 +935,7 @@ async function adminDeleteGallery(id) {
         adminGallery = await apiGet('gallery.php');
         syncGalleryGrid(); renderAdminGallery();
         showToast('Gallery image deleted.', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 // ============================================================
@@ -876,7 +951,7 @@ async function previewAdminLogo(input) {
                 preview.src = tempLogoImage;
                 preview.style.display = 'block';
             }
-        } catch(e) { showToast('Upload failed: ' + e.message, 'error'); }
+        } catch(e) { showToast(getBackendErrorMessage(e, 'Upload failed'), 'error'); }
     }
 }
 
@@ -902,7 +977,7 @@ async function adminSaveSiteInfo() {
         siteInfo = await apiGet('site-info.php');
         syncSiteInfo(); syncMission();
         showToast('Site info updated!', 'success');
-    } catch(e) { showToast('Error: ' + e.message, 'error'); }
+    } catch(e) { showToast(getBackendErrorMessage(e, 'Error'), 'error'); }
 }
 
 async function adminResetAll() {
@@ -912,7 +987,7 @@ async function adminResetAll() {
         await loadAllData();
         showToast('All data reset to defaults.', 'success');
     } catch(e) {
-        showToast('Reset not available. You can run init.php manually.', 'error');
+        showToast(getBackendErrorMessage(e, 'Reset not available'), 'error');
     }
 }
 
@@ -920,6 +995,9 @@ async function adminResetAll() {
 // INITIALIZATION
 // ============================================================
 async function init() {
+    backendConnected = await checkBackendConnection();
+    if (!backendConnected) {
+        showToast('Backend not connected. Loading default content only. Run init.php after setting up the server.', 'error');
+    }
     await loadAllData();
 }
-init();

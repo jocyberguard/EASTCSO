@@ -544,6 +544,39 @@ ul, ol {
 .btn-delete:hover {
     background-color: #c82333;
 }
+
+/* Backend status banner */
+.backend-banner {
+    background-color: #dc3545;
+    color: #FFFFFF;
+    padding: 12px 20px;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+}
+.backend-banner i {
+    font-size: 1.1rem;
+}
+.backend-banner-close {
+    background: none;
+    border: none;
+    color: #FFFFFF;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-left: 10px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+.backend-banner-close:hover {
+    background-color: rgba(255,255,255,0.2);
+}
+
 /* ========================
    SIDEBAR STYLES
    (ID Selector: #sidebar)
