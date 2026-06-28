@@ -383,7 +383,9 @@ async function loadAllData() {
     try {
         adminGallery = await apiGet('gallery.php');
     } catch(e) { failed++; console.error('gallery', e); }
-    syncAll();
+    if (failed < 6) {
+        syncAll();
+    }
     if (failed >= 6) {
         showBackendBanner('Backend not connected. Data will not load or save. Please run a web server (e.g., XAMPP, or python -m http.server).');
         showToast('Backend not connected. Page loaded with default content only.', 'error');
