@@ -18,7 +18,57 @@ $db_pass = '';
 define('ADMIN_USER', 'admin');
 define('ADMIN_PASS', 'eastc2026');
 
-// CORS headers for local development
+// =============================================
+// METHOD OVERRIDE - InfinityFree blocks PUT/DELETE
+// The frontend sends POST with _method=PUT or _method=DELETE
+// =============================================
+$_METHOD = $_SERVER['REQUEST_METHOD'];
+if ($_METHOD === 'POST') {
+    // Check JSON body for _method override
+    $rawBody = file_get_contents('php://input');
+    $jsonData = json_decode($rawBody, true);
+    if (isset($jsonData['_method'])) {
+        $_METHOD = strtoupper($jsonData['_method']);
+    }
+    // Also check query string as fallback
+    if (isset($_GET['_method'])) {
+        $_METHOD = strtoupper($_GET['_method']);
+    }
+}
+
+// =============================================
+// TOKEN FILE STORAGE - Fallback for unreliable sessions
+// =============================================
+define('TOKEN_FILE', __DIR__ . '/uploads/.admin_token');
+
+function saveTokenToFile($token) {
+    $data = json_encode([
+        'token' => $token,
+        'created' => time(),
+        'expires' => time() + 3600 // 1 hour expiry
+    ]);
+    @file_put_contents(TOKEN_FILE, $data);
+}
+
+function getTokenFromFile() {
+    if (!file_exists(TOKEN_FILE)) return null;
+    $data = @json_decode(@file_get_contents(TOKEN_FILE), true);
+    if (!$data || !isset($data['token'])) return null;
+    // Check expiry
+    if (isset($data['expires']) && time() > $data['expires']) {
+        @unlink(TOKEN_FILE);
+        return null;
+    }
+    return $data['token'];
+}
+
+function clearTokenFile() {
+    if (file_exists(TOKEN_FILE)) {
+        @unlink(TOKEN_FILE);
+    }
+}
+
+// CORS headers for development and hosting
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
@@ -40,10 +90,19 @@ try {
     exit;
 }
 
-// Helper: read JSON input
+// Helper: read JSON input (cached since we already read it for _method)
 function getJsonInput() {
+    global $rawBody, $jsonData;
+    if ($jsonData !== null) {
+        // Remove the _method key so it doesn't pollute the data
+        $result = $jsonData;
+        unset($result['_method']);
+        return $result;
+    }
     $raw = file_get_contents('php://input');
-    return json_decode($raw, true) ?? [];
+    $decoded = json_decode($raw, true) ?? [];
+    unset($decoded['_method']);
+    return $decoded;
 }
 
 // Helper: send JSON response
@@ -53,11 +112,11 @@ function jsonResponse($data, $code = 200) {
     exit;
 }
 
-// Helper: authenticate admin via session-stored dynamic token
+// Helper: authenticate admin - tries multiple sources for the token
 function requireAdmin() {
     $token = '';
     
-    // Check request headers
+    // 1. Check request headers (works on most servers)
     if (function_exists('getallheaders')) {
         $headers = getallheaders();
         if (isset($headers['Authorization'])) {
@@ -67,7 +126,7 @@ function requireAdmin() {
         }
     }
     
-    // Fallback for servers not exposing Authorization in headers (e.g. CGI/FastCGI)
+    // 2. Fallback: $_SERVER variables (CGI/FastCGI)
     if (empty($token)) {
         if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
             $token = $_SERVER['HTTP_AUTHORIZATION'];
@@ -75,15 +134,33 @@ function requireAdmin() {
             $token = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
         }
     }
+    
+    // 3. Fallback: query parameter (for hosts that strip all auth headers)
+    if (empty($token) && isset($_GET['_token'])) {
+        $token = $_GET['_token'];
+    }
 
     $token = str_replace('Bearer ', '', $token);
     
-    if (empty($token) || !isset($_SESSION['admin_token']) || $token !== $_SESSION['admin_token']) {
-        jsonResponse(['error' => 'Unauthorized'], 401);
+    // Validate against session token
+    $sessionToken = isset($_SESSION['admin_token']) ? $_SESSION['admin_token'] : null;
+    
+    // Also try file-based token as fallback
+    $fileToken = getTokenFromFile();
+    
+    if (empty($token)) {
+        jsonResponse(['error' => 'Unauthorized - no token provided'], 401);
     }
+    
+    // Accept if token matches either session or file-based token
+    if (($sessionToken && $token === $sessionToken) || ($fileToken && $token === $fileToken)) {
+        return; // Authorized
+    }
+    
+    jsonResponse(['error' => 'Unauthorized - invalid token'], 401);
 }
 
-// Session token manager (simple file-based)
+// Session token manager
 function generateToken() {
     return bin2hex(random_bytes(32));
 }

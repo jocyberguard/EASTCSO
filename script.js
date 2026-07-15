@@ -7,6 +7,7 @@
    - Toast Notifications
    - Admin Panel with PHP Backend API
    - Image uploads via FormData
+   - InfinityFree compatible: POST method override
    ============================================= */
 
 // API base URL (adjust if hosting in a subdirectory)
@@ -24,6 +25,7 @@ let adminAnnouncements = [];
 let adminLeaders = [];
 let adminGallery = [];
 let siteInfo = {};
+let adminMessages = [];
 
 // Editing state
 let editingActivityIndex = -1;
@@ -40,9 +42,27 @@ let tempLogoImage = null;
 
 // ============================================================
 // API HELPERS
+// All write operations use POST with _method override
+// to work on InfinityFree (which blocks PUT/DELETE)
 // ============================================================
+
+// Build URL with optional _token query param for auth fallback
+function buildUrl(endpoint, includeToken) {
+    var url = API_BASE + endpoint;
+    if (includeToken && adminToken) {
+        var separator = url.indexOf('?') >= 0 ? '&' : '?';
+        url += separator + '_token=' + encodeURIComponent(adminToken);
+    }
+    return url;
+}
+
 async function apiGet(endpoint) {
-    const res = await fetch(API_BASE + endpoint);
+    const headers = {};
+    if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
+    const res = await fetch(buildUrl(endpoint, true), {
+        method: 'GET',
+        headers: headers
+    });
     if (!res.ok) throw new Error('API error: ' + res.status);
     return res.json();
 }
@@ -50,7 +70,7 @@ async function apiGet(endpoint) {
 async function apiPost(endpoint, data) {
     const headers = { 'Content-Type': 'application/json' };
     if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
-    const res = await fetch(API_BASE + endpoint, {
+    const res = await fetch(buildUrl(endpoint, true), {
         method: 'POST',
         headers: headers,
         body: JSON.stringify(data)
@@ -59,25 +79,31 @@ async function apiPost(endpoint, data) {
     return res.json();
 }
 
+// PUT is sent as POST with _method=PUT (InfinityFree blocks real PUT)
 async function apiPut(endpoint, data) {
     const headers = { 'Content-Type': 'application/json' };
     if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
-    const res = await fetch(API_BASE + endpoint, {
-        method: 'PUT',
+    // Add _method override to the data payload
+    var payload = Object.assign({}, data, { _method: 'PUT' });
+    const res = await fetch(buildUrl(endpoint, true), {
+        method: 'POST',
         headers: headers,
-        body: JSON.stringify(data)
+        body: JSON.stringify(payload)
     });
     if (!res.ok) throw new Error('API error: ' + res.status);
     return res.json();
 }
 
+// DELETE is sent as POST with _method=DELETE (InfinityFree blocks real DELETE)
 async function apiDelete(endpoint, data) {
     const headers = { 'Content-Type': 'application/json' };
     if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
-    const res = await fetch(API_BASE + endpoint, {
-        method: 'DELETE',
+    // Add _method override to the data payload
+    var payload = Object.assign({}, data, { _method: 'DELETE' });
+    const res = await fetch(buildUrl(endpoint, true), {
+        method: 'POST',
         headers: headers,
-        body: JSON.stringify(data)
+        body: JSON.stringify(payload)
     });
     if (!res.ok) throw new Error('API error: ' + res.status);
     return res.json();
@@ -88,7 +114,7 @@ async function apiUpload(file) {
     formData.append('image', file);
     const headers = {};
     if (adminToken) headers['Authorization'] = 'Bearer ' + adminToken;
-    const res = await fetch(API_BASE + 'upload.php', {
+    const res = await fetch(buildUrl('upload.php', true), {
         method: 'POST',
         headers: headers,
         body: formData
@@ -182,8 +208,10 @@ function showToast(message, type) {
 // ============================================================
 const contactForm = document.getElementById('contact-form');
 if (contactForm) {
-    contactForm.addEventListener('submit', function(event) {
+    contactForm.addEventListener('submit', async function(event) {
         event.preventDefault();
+        const submitBtn = document.getElementById('submit-btn');
+        const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
         const fullName = document.getElementById('fullname').value.trim();
         const email = document.getElementById('email').value.trim();
         const message = document.getElementById('message').value.trim();
@@ -191,8 +219,26 @@ if (contactForm) {
             showToast('Please fill in all contact form fields.', 'error');
             return;
         }
-        showToast('Thank you, ' + fullName + '! Your message has been received.', 'success');
-        contactForm.reset();
+        try {
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+            }
+            const res = await apiPost('messages.php', { name: fullName, email: email, message: message });
+            if (res.success) {
+                showToast('Thank you, ' + fullName + '! Your message has been received.', 'success');
+                contactForm.reset();
+            } else {
+                showToast(res.error || 'Failed to send message.', 'error');
+            }
+        } catch(e) {
+            showToast(getBackendErrorMessage(e, 'Error'), 'error');
+        } finally {
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalBtnHtml;
+            }
+        }
     });
 }
 
@@ -502,6 +548,19 @@ async function openAdminPanel() {
     renderAdminAnnouncements();
     renderAdminLeaders();
     renderAdminGallery();
+    var msgList = document.getElementById('adm-messages-list');
+    if (msgList) {
+        msgList.innerHTML = '<p style="color:#888; font-size:0.9rem; padding:10px 0;"><i class="fas fa-spinner fa-spin"></i> Loading messages...</p>';
+    }
+    try {
+        adminMessages = await apiGet('messages.php');
+        renderAdminMessages();
+    } catch(e) {
+        console.error('Failed to load messages on admin panel open', e);
+        if (msgList) {
+            msgList.innerHTML = '<p style="color:#dc3545; font-size:0.9rem; padding:10px 0;"><i class="fas fa-exclamation-circle"></i> Failed to load messages: ' + e.message + '</p>';
+        }
+    }
 }
 function closeAdminPanel() { document.getElementById('admin-panel-modal').style.display = 'none'; }
 
@@ -1024,6 +1083,46 @@ async function adminResetAll() {
         showToast('All data reset to defaults.', 'success');
     } catch(e) {
         showToast(getBackendErrorMessage(e, 'Reset not available'), 'error');
+    }
+}
+
+// ============================================================
+// ADMIN: MESSAGES
+// ============================================================
+function renderAdminMessages() {
+    var list = document.getElementById('adm-messages-list');
+    if (!list) return;
+    if (adminMessages.length === 0) { 
+        list.innerHTML = '<p style="color:#888; font-size:0.9rem; padding:10px 0;">No messages received yet.</p>'; 
+        return; 
+    }
+    list.innerHTML = adminMessages.map(function(m) {
+        var displayDate = m.created_at || '';
+        if (m.created_at && m.created_at.indexOf(' ') !== -1) {
+            var parts = m.created_at.split(' ');
+            displayDate = formatDate(parts[0]) + ' ' + parts[1];
+        }
+        return '<div class="admin-list-item">' +
+            '<div class="admin-item-info">' +
+            '<strong>' + m.name + ' (' + m.email + ')</strong>' +
+            '<span style="display:block; margin: 4px 0; color:#333; font-size:0.9rem; font-weight:normal;">' + m.message + '</span>' +
+            '<span>Sent on: ' + displayDate + '</span>' +
+            '</div>' +
+            '<div class="admin-item-actions">' +
+            '<button class="btn btn-sm btn-delete" onclick="adminDeleteMessage(' + m.id + ')" title="Delete Message"><i class="fas fa-trash-alt"></i></button>' +
+            '</div></div>';
+    }).join('');
+}
+
+async function adminDeleteMessage(id) {
+    if (!confirm('Delete this message?')) return;
+    try {
+        await apiDelete('messages.php', { id: id });
+        adminMessages = await apiGet('messages.php');
+        renderAdminMessages();
+        showToast('Message deleted.', 'success');
+    } catch(e) {
+        showToast(getBackendErrorMessage(e, 'Error'), 'error');
     }
 }
 

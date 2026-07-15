@@ -2,7 +2,7 @@
 /* site-info.php - Get/Update Site Info */
 require 'config.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+if ($_METHOD === 'GET') {
     $stmt = $pdo->query("SELECT * FROM site_info WHERE id = 1");
     $info = $stmt->fetch();
     if ($info) {
@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     jsonResponse($info ?: ['error' => 'Not found'], $info ? 200 : 404);
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+if ($_METHOD === 'PUT') {
     requireAdmin();
     $data = getJsonInput();
     $fields = [];

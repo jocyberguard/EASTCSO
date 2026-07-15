@@ -2,12 +2,12 @@
 /* events.php - CRUD for Events */
 require 'config.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+if ($_METHOD === 'GET') {
     $stmt = $pdo->query("SELECT id, name, event_date as date, venue, image, sort_order FROM events ORDER BY sort_order, id");
     jsonResponse($stmt->fetchAll());
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if ($_METHOD === 'POST') {
     requireAdmin();
     $data = getJsonInput();
     $stmt = $pdo->prepare("INSERT INTO events (name, event_date, venue, image, sort_order) VALUES (?, ?, ?, ?, ?)");
@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     jsonResponse(['success' => true, 'id' => $pdo->lastInsertId()]);
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
+if ($_METHOD === 'PUT') {
     requireAdmin();
     $data = getJsonInput();
     if (empty($data['id'])) jsonResponse(['error' => 'ID required'], 400);
@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT') {
     jsonResponse(['success' => true, 'message' => 'Event updated']);
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'DELETE') {
+if ($_METHOD === 'DELETE') {
     requireAdmin();
     $data = getJsonInput();
     if (empty($data['id'])) jsonResponse(['error' => 'ID required'], 400);

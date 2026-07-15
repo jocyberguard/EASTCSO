@@ -1,5 +1,2 @@
-backend/uploads/*.jpg
-backend/uploads/*.jpeg
-backend/uploads/*.png
-backend/uploads/*.gif
-backend/uploads/*.webp
+backend/uploads/*
+!backend/uploads/.gitkeep
